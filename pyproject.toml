@@ -1,0 +1,60 @@
+[project]
+name = "tradedqn"
+version = "0.1.0"
+description = "Stock-trading agent via a Dueling Deep Q-Network (Bar-Ilan Vibe Coding Workshop, Assignment 2)"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Adir Elmakais" }]
+dependencies = [
+    "torch>=2.2.0",          # Dueling DQN (Conv1D streams + value/advantage heads)
+    "numpy>=1.24.0",
+    "pandas>=2.1.0",         # OHLCV frames + windowing
+    "yfinance>=0.2.40",      # market data source (rate-limited — see §5 gatekeeper)
+    "pyyaml>=6.0",           # config (no hardcoded hyperparameters — §7)
+    "matplotlib>=3.7.0",     # equity curves / training charts
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# Only the `tradedqn` package ships in the wheel. `analysis/` (research),
+# `scripts/` (top-level launchers) and `tests/` are intentionally excluded
+# — same §14 packaging discipline as Assignment 1.
+packages = ["src/tradedqn"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM"]
+ignore = ["E501"]
+
+[tool.coverage.run]
+source = ["src/tradedqn"]
+
+[tool.coverage.report]
+fail_under = 85
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=src/tradedqn",
+    "--cov-fail-under=85",
+    "-ra",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.0.0",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.15.7",
+]

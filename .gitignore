@@ -1,0 +1,83 @@
+# Instructions folder (private - not for submission)
+instructions/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data caches — raw market data is re-fetchable from the API, not source.
+# A small reproducible sample MAY be committed deliberately (see config).
+data/cache/
+data/raw/
+*.parquet
+
+# Trained models / checkpoints (large, regenerable from training).
+# We serialize with torch.save (state_dict), never arbitrary objects.
+*.pt
+*.pth
+*.ckpt
+checkpoints/
+runs/
+
+# Caches
+.soft_cache/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Coverage
+htmlcov/
+.coverage
+.coverage*
+coverage.xml
+
+# Secrets and credentials (per submission_guidelines §7.4)
+.env
+*.pem
+*.key
+credentials.json
+*.crt
+*.p12
+*.pfx
+secrets.json
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+id_ecdsa
+id_ecdsa.pub
+*.cer
+*.csr
+*.kdbx
+*.gpg
+*.kubeconfig
+.aws/
+.netrc
+.npmrc
+.pypirc
+.ssh/
+
+# Codex agent definitions (mirror of CLAUDE.md, kept local)
+AGENTS.md

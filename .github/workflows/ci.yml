@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        env:
+          PY_VERSION: ${{ matrix.python-version }}
+        run: uv python install "$PY_VERSION"
+
+      - name: Install dependencies (frozen lockfile)
+        run: uv sync --frozen --dev
+
+      - name: Lint (ruff)
+        run: uv run ruff check src/ tests/ analysis/ scripts/
+
+      - name: secret-pattern scan (auditable evidence)
+        run: bash scripts/check_no_secrets.sh
+
+      - name: Run tests with coverage gate
+        run: |
+          uv run pytest tests/ \
+            --cov=src \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --cov-fail-under=85
+
+      - name: Enforce 150-line file-size limit
+        run: bash scripts/check_file_sizes.sh
+
+      - name: Upload coverage report
+        if: matrix.python-version == '3.13'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: ignore

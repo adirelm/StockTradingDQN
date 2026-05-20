@@ -1,0 +1,38 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.7
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+        files: ^(src|tests|analysis|scripts)/.*\.py$|^main\.py$
+
+  - repo: local
+    hooks:
+      - id: file-size-limit
+        name: Enforce 150-line file-size limit
+        entry: scripts/check_file_sizes.sh
+        language: script
+        pass_filenames: false
+      - id: secret-scan
+        name: §7 — secret-pattern scan (auditable evidence, not just .gitignore)
+        entry: scripts/check_no_secrets.sh
+        language: script
+        pass_filenames: false
+      - id: pytest-fast
+        name: Run pytest (fast)
+        entry: uv run pytest tests/ -x -q --no-cov
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
