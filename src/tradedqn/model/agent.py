@@ -49,6 +49,11 @@ class DQNAgent:
             q_values = self.policy(self._batch(state))
         return int(torch.argmax(q_values, dim=1).item())
 
+    def q_values(self, state) -> np.ndarray:
+        """Raw Q-vector for a single state (used by inference)."""
+        with torch.no_grad():
+            return self.policy(self._batch(state)).squeeze(0).cpu().numpy()
+
     def remember(self, state, action, reward, next_state, done) -> None:
         self.replay.push(state, action, reward, next_state, done)
 
