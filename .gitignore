@@ -81,3 +81,6 @@ id_ecdsa.pub
 
 # Codex agent definitions (mirror of CLAUDE.md, kept local)
 AGENTS.md
+
+# Claude Code machine-local settings
+.claude/settings.local.json
