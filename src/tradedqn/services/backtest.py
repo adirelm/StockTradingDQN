@@ -3,40 +3,35 @@
 Reports the strategy equity curve against a Buy & Hold benchmark plus the
 deck's metrics (total return, Sharpe, max drawdown, win rate, num trades).
 This is the project's "prove the policy works" evidence. Past ≠ future.
+Shares the rollout skeleton with training via :class:`RolloutService`.
 """
 
 from __future__ import annotations
 
 from tradedqn.services import metrics
+from tradedqn.services.rollout import RolloutService
 
 
-class BacktestService:
-    def __init__(self, env, agent) -> None:
-        self.env = env
-        self.agent = agent
-
+class BacktestService(RolloutService):
     def run(self) -> dict:
         """Greedy rollout over the env; return curves + metrics."""
-        state = self.env.reset()
         initial = self.env.portfolio.initial_capital
-        equity, prices = [initial], []
-        trades = wins = round_trips = 0
-        entry_equity = None
-        done = False
-        while not done:
-            action = self.agent.act(state, greedy=True)
-            state, _, done, info = self.env.step(action)
-            equity.append(info["value"])
-            prices.append(info["price"])
+        acc = {"equity": [initial], "prices": [], "trades": 0, "wins": 0, "trips": 0, "entry": None}
+
+        def on_step(state, action, reward, next_state, done, info):
+            acc["equity"].append(info["value"])
+            acc["prices"].append(info["price"])
             if info["traded"] > 0:
-                trades += 1
+                acc["trades"] += 1
                 if info["action"] == "buy":
-                    entry_equity = info["value"]
-                elif info["action"] == "sell" and entry_equity is not None:
-                    round_trips += 1
-                    wins += int(info["value"] > entry_equity)
-                    entry_equity = None
-        return self._summary(equity, prices, trades, wins, round_trips, initial)
+                    acc["entry"] = info["value"]
+                elif info["action"] == "sell" and acc["entry"] is not None:
+                    acc["trips"] += 1
+                    acc["wins"] += int(info["value"] > acc["entry"])
+                    acc["entry"] = None
+
+        self._rollout(greedy=True, on_step=on_step)
+        return self._summary(acc["equity"], acc["prices"], acc["trades"], acc["wins"], acc["trips"], initial)
 
     @staticmethod
     def _benchmark(prices, initial: float) -> list[float]:
