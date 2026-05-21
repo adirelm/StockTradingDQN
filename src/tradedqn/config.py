@@ -30,6 +30,7 @@ class Config(SimpleNamespace):
 
 
 def _wrap(value: Any) -> Any:
+    """Recursively wrap dicts as ``Config`` and lists element-wise."""
     if isinstance(value, dict):
         return Config(value)
     if isinstance(value, list):
@@ -38,6 +39,7 @@ def _wrap(value: Any) -> Any:
 
 
 def _unwrap(value: Any) -> Any:
+    """Recursively convert ``Config``/lists back to plain dicts/lists."""
     if isinstance(value, Config):
         return value.to_dict()
     if isinstance(value, list):

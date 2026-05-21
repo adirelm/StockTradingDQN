@@ -19,6 +19,8 @@ from tradedqn.model.replay_buffer import ReplayBuffer
 
 
 class DQNAgent:
+    """Policy + target Dueling-DQN with ε-greedy action selection and DQN learning."""
+
     def __init__(self, cfg, device: str = "cpu") -> None:
         self.device = torch.device(device)
         self.n_actions = len(vars(cfg.actions))
@@ -41,6 +43,7 @@ class DQNAgent:
         self._env_steps = 0
 
     def _batch(self, state) -> torch.Tensor:
+        """Wrap a single state as a (1, …) float32 tensor on the device."""
         return torch.as_tensor(np.asarray(state, dtype=np.float32), device=self.device).unsqueeze(0)
 
     def act(self, state, greedy: bool = False) -> int:
@@ -57,6 +60,7 @@ class DQNAgent:
             return self.policy(self._batch(state)).squeeze(0).cpu().numpy()
 
     def remember(self, state, action, reward, next_state, done) -> None:
+        """Store a transition (s, a, r, s', done) in the replay buffer."""
         self.replay.push(state, action, reward, next_state, done)
 
     def learn(self) -> float | None:
@@ -86,12 +90,15 @@ class DQNAgent:
         return float(loss.item())
 
     def decay_epsilon(self) -> None:
+        """Decay ε one step toward its floor (called once per episode)."""
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
     def sync_target(self) -> None:
+        """Copy the policy weights into the frozen target network (θ⁻ ← θ)."""
         self.target.load_state_dict(self.policy.state_dict())
 
     def save(self, path: str) -> None:
+        """Checkpoint policy+target weights and ε/γ to ``path`` (tensors only)."""
         target_path = Path(path)
         target_path.parent.mkdir(parents=True, exist_ok=True)
         torch.save(
@@ -105,6 +112,7 @@ class DQNAgent:
         )
 
     def load(self, path: str) -> None:
+        """Restore weights and ε/γ from a checkpoint (``weights_only=True``)."""
         checkpoint = torch.load(path, map_location=self.device, weights_only=True)
         self.policy.load_state_dict(checkpoint["policy"])
         self.target.load_state_dict(checkpoint["target"])

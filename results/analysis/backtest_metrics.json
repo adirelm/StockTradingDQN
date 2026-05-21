@@ -1,17 +1,99 @@
 {
-  "total_return": 0.0448669743536525,
-  "benchmark_return": 0.12077276459354036,
-  "sharpe_ratio": 0.27257343547092655,
-  "max_drawdown": 0.17794224823981214,
-  "win_rate": 0.3611111111111111,
-  "num_trades": 72,
+  "trade_markers": [
+    {
+      "step": 0,
+      "price": 151.69944763183594,
+      "action": "buy"
+    },
+    {
+      "step": 3,
+      "price": 154.4873809814453,
+      "action": "sell"
+    },
+    {
+      "step": 4,
+      "price": 160.43638610839844,
+      "action": "buy"
+    },
+    {
+      "step": 16,
+      "price": 147.09530639648438,
+      "action": "sell"
+    },
+    {
+      "step": 29,
+      "price": 139.8014373779297,
+      "action": "buy"
+    },
+    {
+      "step": 31,
+      "price": 141.224853515625,
+      "action": "sell"
+    },
+    {
+      "step": 42,
+      "price": 136.3360595703125,
+      "action": "buy"
+    },
+    {
+      "step": 44,
+      "price": 136.60159301757812,
+      "action": "sell"
+    },
+    {
+      "step": 45,
+      "price": 137.171875,
+      "action": "buy"
+    },
+    {
+      "step": 46,
+      "price": 132.61917114257812,
+      "action": "sell"
+    },
+    {
+      "step": 51,
+      "price": 146.30682373046875,
+      "action": "buy"
+    },
+    {
+      "step": 55,
+      "price": 147.6736297607422,
+      "action": "sell"
+    },
+    {
+      "step": 63,
+      "price": 144.1829071044922,
+      "action": "buy"
+    },
+    {
+      "step": 65,
+      "price": 138.58786010742188,
+      "action": "sell"
+    },
+    {
+      "step": 69,
+      "price": 143.04226684570312,
+      "action": "buy"
+    },
+    {
+      "step": 80,
+      "price": 127.44692993164062,
+      "action": "sell"
+    }
+  ],
+  "total_return": -0.232041865702995,
+  "benchmark_return": -0.15779777755984215,
+  "sharpe_ratio": -3.5459138707009434,
+  "max_drawdown": 0.24956114077816108,
+  "win_rate": 0.125,
+  "num_trades": 16,
   "ticker": "AAPL",
-  "period": "2014-01-01..2024-01-01",
+  "period": "2020-01-01..2023-01-01",
   "episodes": 120,
   "splits": {
-    "train": 1747,
-    "validation": 374,
-    "test": 376
+    "train": 515,
+    "validation": 110,
+    "test": 112
   },
   "recommendation": "buy"
 }

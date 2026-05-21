@@ -1,17 +1,20 @@
 """Technical-indicator math — pure functions over pandas Series.
 
 No I/O and no config: each takes a Series (and parameters) and returns a Series
-of the same length (NaN during warmup). Kept pure so they unit-test on toy data.
+of the same length (NaN during warmup), so they unit-test on toy data. Together
+they build the brief's 8 market features: ``log_return, rsi_14, macd,
+macd_signal, macd_hist, bb_pct, vwap_dist, volume_norm`` (§4).
 """
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 
 
-def returns(series: pd.Series) -> pd.Series:
-    """Simple period-over-period return."""
-    return series.pct_change()
+def log_return(close: pd.Series) -> pd.Series:
+    """Log return ln(Pₜ / Pₜ₋₁) — additive over time, symmetric around 0."""
+    return np.log(close).diff()
 
 
 def sma(series: pd.Series, window: int) -> pd.Series:
@@ -36,35 +39,39 @@ def rsi(series: pd.Series, period: int) -> pd.Series:
     avg_loss = loss.rolling(period).mean()
     rs = avg_gain / avg_loss.replace(0.0, pd.NA)
     out = 100.0 - 100.0 / (1.0 + rs)
-    # avg_loss == 0 (only gains) → RSI 100; avg_gain == 0 (only losses) → RSI 0
     out = out.mask((avg_loss == 0.0) & (avg_gain > 0.0), 100.0)
     out = out.mask((avg_gain == 0.0) & (avg_loss > 0.0), 0.0)
     return out.astype(float)
 
 
-def macd(series: pd.Series, fast: int, slow: int) -> pd.Series:
+def macd(close: pd.Series, fast: int, slow: int) -> pd.Series:
     """MACD line = EMA(fast) − EMA(slow). Positive ⇒ short-term momentum up."""
-    return ema(series, fast) - ema(series, slow)
+    return ema(close, fast) - ema(close, slow)
 
 
-def rolling_volatility(return_series: pd.Series, window: int) -> pd.Series:
-    """Rolling standard deviation of returns — local risk/uncertainty."""
-    return return_series.rolling(window).std()
+def macd_signal(macd_line: pd.Series, signal: int) -> pd.Series:
+    """Signal line = EMA(signal) of the MACD line."""
+    return ema(macd_line, signal)
 
 
-def high_low_range(high: pd.Series, low: pd.Series, close: pd.Series) -> pd.Series:
-    """Intraday range normalised by close: ``(High − Low) / Close``."""
-    return (high - low) / close
+def bollinger_pct(close: pd.Series, window: int, num_std: float = 2.0) -> pd.Series:
+    """Bollinger %B — close's position within its ±k·σ band (≈0 at lower … 1 at upper)."""
+    mid = sma(close, window)
+    sd = close.rolling(window).std()
+    lower = mid - num_std * sd
+    span = (2.0 * num_std * sd).replace(0.0, pd.NA)
+    return ((close - lower) / span).astype(float)
 
 
-def ratio_to_ma(close: pd.Series, window: int) -> pd.Series:
-    """Relative deviation of price from its moving average: ``Close / SMA − 1``."""
-    return close / sma(close, window) - 1.0
+def vwap_dist(high, low, close, volume, window: int) -> pd.Series:
+    """Relative distance of close from the rolling VWAP: ``Close / VWAP − 1``."""
+    typical = (high + low + close) / 3.0
+    pv = (typical * volume).rolling(window).sum()
+    vol = volume.rolling(window).sum().replace(0.0, pd.NA)
+    return (close / (pv / vol) - 1.0).astype(float)
 
 
-def normalized_price(close: pd.Series, window: int) -> pd.Series:
-    """Relative position of close within its rolling [min, max] window → ~[0, 1]."""
-    lo = close.rolling(window).min()
-    hi = close.rolling(window).max()
-    span = (hi - lo).replace(0.0, pd.NA)
-    return ((close - lo) / span).astype(float)
+def volume_norm(volume: pd.Series, window: int) -> pd.Series:
+    """Volume relative to its moving average: ``Volume / SMA(Volume) − 1``."""
+    avg = sma(volume, window).replace(0.0, pd.NA)
+    return (volume / avg - 1.0).astype(float)

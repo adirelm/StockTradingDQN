@@ -19,8 +19,9 @@ class TestProjectConfig:
 
     def test_ten_feature_names(self, cfg):
         assert len(cfg.features.names) == 10
-        assert cfg.features.names[6] == "rsi"
-        assert cfg.features.names[7] == "macd"
+        assert cfg.features.names[0] == "log_return"
+        assert cfg.features.names[1] == "rsi_14"
+        assert cfg.features.names[8:] == ["position", "unrealized_pnl"]
 
     def test_action_encoding_matches_deck(self, cfg):
         assert (cfg.actions.sell, cfg.actions.hold, cfg.actions.buy) == (0, 1, 2)

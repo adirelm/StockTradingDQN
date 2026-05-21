@@ -38,7 +38,7 @@ class TestState:
     def test_portfolio_channels_after_reset(self, env):
         state = env.reset()
         assert np.allclose(state[:, 8], 0.0)   # position: all cash → 0
-        assert np.allclose(state[:, 9], 1.0)   # cash_exposure: all cash → 1
+        assert np.allclose(state[:, 9], 0.0)   # unrealized_pnl: flat → 0
 
     def test_no_look_ahead_last_row_is_current_day(self, env):
         env.reset()  # t = WINDOW-1 = 2

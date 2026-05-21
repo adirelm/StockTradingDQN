@@ -14,15 +14,19 @@ import numpy as np
 
 
 class RewardFunction:
+    """The deck reward r = ΔV − C − S + λ·Sharpe (in fraction-of-capital units)."""
+
     def __init__(self, risk_lambda: float, sharpe_window: int) -> None:
         self.risk_lambda = float(risk_lambda)
         self.sharpe_window = int(sharpe_window)
         self._returns: deque[float] = deque(maxlen=self.sharpe_window)
 
     def reset(self) -> None:
+        """Clear the rolling-return window between episodes."""
         self._returns.clear()
 
     def _rolling_sharpe(self) -> float:
+        """Mean/std of the recent net step returns (0 if too few or flat)."""
         if len(self._returns) < 2:
             return 0.0
         arr = np.asarray(self._returns, dtype=float)

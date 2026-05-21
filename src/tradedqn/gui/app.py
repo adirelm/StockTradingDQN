@@ -19,6 +19,8 @@ from tradedqn.gui.tcl_setup import ensure_tk_libraries
 
 
 class MainWindow:
+    """Tk window: a toolbar of SDK actions over a live matplotlib chart + status bar."""
+
     def __init__(self, sdk) -> None:
         ensure_tk_libraries()  # point Tcl/Tk at the bundled libs before Tk() starts
         self.controller = GuiController(sdk)
@@ -29,6 +31,7 @@ class MainWindow:
         self._build()
 
     def _build(self) -> None:
+        """Lay out the toolbar, chart frame, progress bar, and status bar."""
         bar = ttk.Frame(self.root, padding=8)
         bar.pack(side=tk.TOP, fill=tk.X)
         buttons = (
@@ -50,6 +53,7 @@ class MainWindow:
         )
 
     def _add_inputs(self, bar) -> None:
+        """Add the ticker / date-range / episodes input widgets to the toolbar."""
         data = self.controller.sdk.cfg.data
         self._ticker = tk.StringVar(value=data.ticker)
         self._start = tk.StringVar(value=data.start)
@@ -64,6 +68,7 @@ class MainWindow:
         ttk.Spinbox(bar, from_=1, to=10000, width=6, textvariable=self._episodes).pack(side=tk.LEFT)
 
     def _show(self, figure) -> None:
+        """Replace the embedded chart canvas with ``figure``."""
         if self._canvas is not None:
             self._canvas.get_tk_widget().destroy()
         self._canvas = FigureCanvasTkAgg(figure, master=self._chart_frame)
@@ -71,29 +76,36 @@ class MainWindow:
         self._canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
     def _safe(self, action) -> None:
+        """Run ``action``; show any RuntimeError/ValueError in the status bar."""
         try:
             action()
         except (RuntimeError, ValueError) as error:
             self.status.set(f"Error: {error}")
 
     def _prepare(self) -> None:
+        """Button: prepare data for the chosen ticker/date range."""
         self._safe(lambda: self.status.set(
             self.controller.prepare(self._ticker.get(), self._start.get(), self._end.get())
         ))
 
     def _train(self) -> None:
+        """Button: train (guarded by ``_safe``)."""
         self._safe(self._do_train)
 
     def _backtest(self) -> None:
+        """Button: backtest (guarded by ``_safe``)."""
         self._safe(self._do_backtest)
 
     def _recommend(self) -> None:
+        """Button: recommend (guarded by ``_safe``)."""
         self._safe(self._do_recommend)
 
     def _compare(self) -> None:
+        """Button: Dueling-vs-plain comparison (guarded by ``_safe``)."""
         self._safe(self._do_compare)
 
     def _do_train(self) -> None:
+        """Train for the chosen episode count with a live chart + progress bar."""
         episodes = int(self._episodes.get())
         self._progressbar.configure(maximum=episodes, value=0)
         self.status.set(f"Training {episodes} episode(s)…")
@@ -103,22 +115,26 @@ class MainWindow:
         self._show(figure)
 
     def _on_episode(self, line: str, history: list) -> None:
+        """Per-episode callback: update status, progress bar, and live chart."""
         self.status.set(line)
         self._progressbar.configure(value=len(history))
         self._show(training_figure(history))  # live-animate the reward + ε chart
         self.root.update_idletasks()  # repaint now; no event re-entrancy
 
     def _do_backtest(self) -> None:
+        """Run the backtest and show its two-panel figure."""
         status, figure = self.controller.backtest()
         self.status.set(status)
         self._show(figure)
 
     def _do_recommend(self) -> None:
+        """Recommend an action and show its Q-value chart."""
         status, figure = self.controller.recommend()
         self.status.set(status)
         self._show(figure)
 
     def _do_compare(self) -> None:
+        """Train both architectures and show the comparison chart."""
         episodes = int(self._episodes.get())
         self.status.set(f"Comparing Dueling vs plain DQN over {episodes} episode(s)…")
         self.root.update_idletasks()
@@ -127,8 +143,10 @@ class MainWindow:
         self._show(figure)
 
     def _on_compare(self, line: str) -> None:
+        """Per-episode callback for the comparison run: update the status line."""
         self.status.set(line)
         self.root.update_idletasks()
 
     def run(self) -> None:
+        """Enter the Tk event loop (blocks until the window closes)."""
         self.root.mainloop()

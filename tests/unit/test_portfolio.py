@@ -40,13 +40,14 @@ class TestValuation:
         pf.buy(10.0)
         assert pf.value(10.0) == pytest.approx(pf.shares * 10.0)
 
-    def test_position_and_cash_exposure_sum_to_one(self, pf):
-        pf.buy(10.0)
-        assert pf.position(11.0) + pf.cash_exposure(11.0) == pytest.approx(1.0)
+    def test_unrealized_pnl_tracks_open_position(self, pf):
+        pf.buy(10.0)                            # entry near 10
+        assert pf.unrealized_pnl(11.0) > 0.0    # price up → positive open P&L
+        assert pf.unrealized_pnl(9.0) < 0.0     # price down → negative
 
-    def test_all_cash_means_zero_position(self, pf):
+    def test_flat_position_has_zero_pnl(self, pf):
         assert pf.position(10.0) == 0.0
-        assert pf.cash_exposure(10.0) == pytest.approx(1.0)
+        assert pf.unrealized_pnl(10.0) == 0.0
 
     def test_reset_restores_initial(self, pf):
         pf.buy(10.0)

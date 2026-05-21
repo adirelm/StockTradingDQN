@@ -17,7 +17,7 @@ while IFS= read -r -d '' file; do
     if [ "$code_lines" -gt "$LIMIT" ]; then
         violations+=("$file: $code_lines code lines")
     fi
-done < <(find src tests scripts analysis -name '*.py' -print0)
+done < <(find src tests scripts main.py -name '*.py' -print0)
 
 if [ ${#violations[@]} -gt 0 ]; then
     echo "Files exceeding ${LIMIT}-line code limit (blank + '#' comment lines excluded):" >&2

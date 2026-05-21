@@ -22,13 +22,15 @@ benchmark — all behind one SDK with both a terminal and a GUI.
 
 ## What's implemented
 
-- **Data** — `DataClient` pulls OHLCV from Yahoo Finance with a **rate-limit
-  gatekeeper** (§5) and a local CSV cache (offline, reproducible).
-- **Features** — 8 market indicators (returns, normalized price, High-Low range,
-  volume change, ratio-to-MA, volatility, **RSI**, **MACD**), normalized
-  *fit-on-train* (no look-ahead), chronological train/val/test split.
+- **Data** — `DataClient` pulls OHLCV from Yahoo Finance (AAPL, 2020-01-01→2023-01-01)
+  with a **rate-limit gatekeeper** (§5) and a local **parquet cache** (`data/raw/`,
+  snappy) + a `{ticker}.csv` fallback — offline, reproducible.
+- **Features** — the brief's 8 market features (`log_return`, `rsi_14`, `macd`,
+  `macd_signal`, `macd_hist`, `bb_pct`, `vwap_dist`, `volume_norm`), min-max
+  normalized *fit-on-train* (no look-ahead), chronological 70/15/15 split.
 - **Environment** — `TradingEnvironment`: 30×10 state (8 market + 2 portfolio
-  channels), Sell/Hold/Buy, reward `rₜ = ΔVₜ − Cₜ − Sₜ + λ·Sharpeₜ`.
+  channels `position`, `unrealized_pnl`), Sell/Hold/Buy, reward
+  `rₜ = ΔVₜ − Cₜ − Sₜ + γ·Sharpeₜ`.
 - **Model** — Dueling Conv1D DQN, experience replay, target network.
 - **Services** — training loop, backtest (equity vs Buy & Hold + metrics),
   single-step inference.
@@ -42,7 +44,7 @@ The UIs depend only on the SDK; the SDK orchestrates the engine (§4 mandate).
 ```mermaid
 flowchart LR
   YF[Yahoo Finance] --> DC[DataClient + §5 Gatekeeper]
-  DC --> CSV[(CSV cache)]
+  DC --> PQ[(parquet cache)]
   DC --> PP[Preprocessor<br/>8 indicators + normalize]
   PP --> SP[chronological split<br/>train / val / test]
   SP --> ENV[TradingEnvironment<br/>30×10 state]
@@ -91,6 +93,30 @@ flowchart TB
   UI --> FACADE --> SVC --> MODEL --> ENVL --> DATA
 ```
 
+**Sequence — one Prepare → Train → Backtest cycle** (UML, §20.1):
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant SDK as TradingSDK
+    participant Data as DataClient+Gatekeeper
+    participant Env as TradingEnvironment
+    participant Agent as DQNAgent
+    User->>SDK: prepare_data()
+    SDK->>Data: get_ohlcv() (gatekept, cache-first)
+    Data-->>SDK: OHLCV → features → chronological split → fit-on-train normalize
+    User->>SDK: train(episodes)
+    loop each episode
+        SDK->>Env: reset() / step(action)
+        Env-->>Agent: (s, a, r, s', done)
+        Agent->>Agent: remember → learn (Bellman target + MSE) → sync target
+    end
+    User->>SDK: backtest("test")
+    SDK->>Env: greedy rollout over held-out slice
+    Env-->>SDK: equity curve + trade markers
+    SDK-->>User: total_return · Sharpe · drawdown · win-rate · trades
+```
+
 ## Network — Dueling Conv1D DQN
 
 ```
@@ -110,8 +136,8 @@ across). The Dueling split learns "how good is this state" separately from
 
 Yahoo Finance rate-limits rapid calls. `RateLimitGatekeeper` enforces a minimum
 interval **and** a max-calls-per-window before any live fetch; `DataClient` is
-**cache-first** (returns the local CSV when present), so one 10-year pull is
-cached and every subsequent run is offline and reproducible.
+**cache-first** (returns the local parquet when present, with a `{ticker}.csv`
+fallback), so one pull is cached and every subsequent run is offline and reproducible.
 
 ## Installation
 
@@ -188,12 +214,17 @@ $ uv run main.py
   1. Prepare data   2. Train   3. Backtest
   4. Recommend next action   5. Save brain   6. Load brain   0. Quit
 Select: 1
-Prepared splits: {'train': 266, 'validation': 57, 'test': 58}
+Prepared splits: {'train': 515, 'validation': 110, 'test': 112}
+Select: 2
+Trained 12 episode(s); ε=0.540  final value=23315.42
 Select: 3
-Backtest: total_return=+4.48%  benchmark=+12.08%  Sharpe=0.27  max_drawdown=17.8%  win_rate=36.1%  trades=72
+Backtest: total_return=-23.74%  benchmark=-15.78%  Sharpe=-3.34  max_drawdown=28.49%  win_rate=11.11%  trades=18
 Select: 4
-Recommended action: BUY  (Q = [0.12, 0.20, 0.31])
+Recommended action: SELL  (Q = [0.588, 0.502, 0.506])
 ```
+
+> Verbatim from a real run captured to [`assets/terminal_session.txt`](assets/terminal_session.txt)
+> (a short 12-episode demo — the headline 120-episode results are in **Results**).
 
 **GUI** (Tkinter + matplotlib) — a toolbar drives the SDK with inputs you can
 play with: a **ticker** + **date range** (train on AAPL, MSFT, TSLA…), an
@@ -212,7 +243,13 @@ play with: a **ticker** + **date range** (train on AAPL, MSFT, TSLA…), an
 The shot below is the real window (`uv run main.py gui`), captured by
 `scripts/capture_gui.py`:
 
-![TradeDQN GUI dashboard](docs/assets/gui_dashboard.png)
+![TradeDQN GUI — Backtest view](docs/assets/gui_dashboard.png)
+
+The other GUI states, same window (all real captures via `scripts/capture_gui.py --view …`):
+
+![Train — live reward + ε chart](docs/assets/gui_train.png)
+![Recommend — Q-value bars](docs/assets/gui_recommend.png)
+![Compare arch — Dueling vs plain DQN reward](docs/assets/gui_compare.png)
 
 > A genuine capture, not a mockup — regenerate any time with
 > `uv run python scripts/capture_gui.py`. The numbers come from a short demo
@@ -255,27 +292,26 @@ screen-reader testing; chart colours are not formally CVD-checked.
 ## Results & analysis
 
 <!-- RESULTS:START (filled by scripts/generate_results.py) -->
-**Real run — AAPL, 2014–2024, 120 training episodes.** ε decays to its 0.05
-floor by ~episode 58, so the back half of training exploits the learned policy.
-Chronological split: train 1,747 days · validation 374 · test 376. Evaluated
-**greedy** on the held-out **test** slice it never trained on.
+**Real run — AAPL, 2020-01-01→2023-01-01 (the binding §4 window), 120 training
+episodes.** Chronological split: train 515 days · validation 110 · test 112.
+Evaluated **greedy** on the held-out **test** slice it never trained on.
 
 ![Training reward per episode](results/analysis/training_reward.png)
 
 ![Backtest equity vs Buy & Hold](results/analysis/backtest_equity.png)
 
-| Metric (held-out test, 376 days) | DQN policy | Buy & Hold |
+| Metric (held-out test, 112 days) | DQN policy | Buy & Hold |
 |---|---:|---:|
-| Total return | +4.5 % | **+12.1 %** |
-| Sharpe ratio | +0.27 | — |
-| Max drawdown | 17.8 % | — |
-| Win rate (round-trips) | 36 % | — |
-| Trades | 72 | 1 |
+| Total return | **−23.2 %** | −15.8 % |
+| Sharpe ratio | −3.55 | — |
+| Max drawdown | 25.0 % | — |
+| Win rate (round-trips) | 12.5 % | — |
+| Trades | 16 | 1 |
 | Latest recommendation | **BUY** | — |
 
-**In-sample vs out-of-sample.** On the *training* slice the agent learned to
-turn $10 k into **$1–3 million** by the final episodes — yet it returns only
-**+4.5 %** on the held-out test. That gap is the real story (see Conclusions).
+**The test window is AAPL's 2022 drawdown**, so *both* lost money — and the DQN
+lost **more** than simply holding. Training reward rises while the unseen test
+slice underperforms: a clean in-sample/out-of-sample gap (see Conclusions).
 
 Numbers from [`results/analysis/backtest_metrics.json`](results/analysis/backtest_metrics.json);
 reproduce with `uv run python scripts/generate_results.py --episodes 120`.
@@ -291,35 +327,49 @@ reproduce with `uv run python scripts/generate_results.py --episodes 120`.
 ## Conclusions
 
 <!-- CONCLUSIONS:START -->
-**Training helped — but the headline is a textbook in-sample / out-of-sample
-gap.** Longer training (120 episodes, faster ε-decay) moved the held-out result
-from −14.9 % / Sharpe −0.58 (an earlier 12-episode run) to **+4.5 % / Sharpe
-+0.27**, and the recommendation flipped to BUY. Real improvement — but two
-things remain true, and are reported, not hidden:
+**The headline is a clean out-of-sample failure — exactly what the brief asks us
+to surface honestly.** On the held-out 2022 test slice the DQN returns
+**−23.2 % (Sharpe −3.55)** versus Buy & Hold's **−15.8 %**: it not only fails to
+beat the market, it underperforms simply holding. Two things are true and
+reported, not hidden:
 
-- **It still loses to Buy & Hold** out-of-sample (+4.5 % vs +12.1 %).
-- **It massively overfits.** On the *training* period the policy compounded
-  $10 k into **$1–3 million** by the final episodes; on the unseen test period it
-  barely moved (+4.5 %). The training-reward curve climbs steeply while test
-  performance lags — the agent memorised profitable sequences specific to the
-  early years that don't generalise to the most recent ones. This is exactly the
-  **overfitting** failure mode from the lecture (learn the manifold; don't
-  memorise isolated points), made concrete.
+- **It loses to Buy & Hold out-of-sample** (−23.2 % vs −15.8 %).
+- **In-sample ≫ out-of-sample.** Training reward climbs steadily (see the chart)
+  while the unseen test slice underperforms — the agent fits the 2020–2021 bull
+  regime and does not generalise to the 2022 regime shift. Textbook overfitting
+  on a single ticker over a single regime.
 
 Why, and what I'd do differently:
 
-- **Regularise against overfitting:** dropout / weight decay, a smaller network,
-  **early-stopping on the validation Sharpe** (not on training reward), and
-  training across **multiple tickers** so the policy can't memorise one symbol.
-- **Cut the churn:** 72 trades drag returns through costs/slippage — penalise
-  trade frequency harder in the reward.
+- **Regularise:** dropout / weight decay, a smaller network, **early-stopping on
+  the validation Sharpe** (not on training reward), and training across
+  **multiple tickers / regimes** so the policy can't memorise one symbol.
+- **Re-weight risk / cut churn:** the Sharpe-heavy reward (γ=1.0) plus 16 trades
+  in a falling market hurt; tune the cost/risk weights on validation.
 - **Sweep hyperparameters** (γ, learning rate, λ, network size) on the
-  **validation** split before ever touching test.
+  **validation** split before ever touching test (done — see the §9 sweep).
 
 **Markets are hard, and that's the point.** The deliverable is a correct, honest
 DQN *system* with an analysable result — not a profitable trader. **Past ≠
 future.**
 <!-- CONCLUSIONS:END -->
+
+## Concept Q&A (§13)
+
+The twelve questions the brief requires the README to answer, with pointers to the code:
+
+1. **What does Q represent (vs predicting tomorrow's price)?** `Q(s,a;θ)` is the expected *discounted cumulative reward* of taking action `a` in state `s` then following the policy — the value of a *decision*, not a price forecast. The net never predicts the next price; it ranks Sell/Hold/Buy by long-run portfolio value ([network.py](src/tradedqn/model/network.py)).
+2. **Why function approximation, not a Q-Table?** The state `sₜ ∈ ℝ^{30×10}` is continuous and high-dimensional — a table would need a cell per distinct window (effectively infinite, never revisited). A Conv1D net generalises across unseen states via a parametric `Q(s,a;θ)`.
+3. **How does the reward shape the policy?** The objective *is* the reward: `rₜ = ΔVₜ − Cₜ − Sₜ + γ·Sharpeₜ` rewards risk-adjusted PnL net of cost, so the agent learns to trade economically rather than maximise turnover ([reward.py](src/tradedqn/env/reward.py)).
+4. **Reward = immediate profit only, no trade-cost penalty?** The agent would over-trade — churning every bar — since costs are invisible to it; real returns then vanish into fees/slippage. Our `Cₜ`/`Sₜ` terms penalise exactly that.
+5. **Why not mix Test into training; what is leakage?** The split is chronological (never shuffled); Test is strictly *after* train/val. Leakage = letting future info (future prices, or normalization stats fit on the whole series) bleed into training, inflating the backtest. We fit the normalizer on **train only** ([dataset.py](src/tradedqn/features/dataset.py)).
+6. **When is Hold optimal?** When the expected move doesn't cover cost + slippage, or the position is already correct — trading would only burn fees. Hold is the no-op that preserves capital.
+7. **How does Dueling help when mostly no action is needed?** The value head `V(s)` learns "how good is this state" *independent of action*; the advantage head learns the small per-action deltas. In a hold-dominated environment the shared `V(s)` is learned efficiently without sampling every `(s,a)` ([network.py](src/tradedqn/model/network.py)).
+8. **Exploration (training) vs evaluation (backtest)?** Training is ε-greedy (random with prob ε to explore); the backtest is **greedy** (`argmax Q`, ε=0) — we evaluate the learned policy, not exploration noise ([agent.py](src/tradedqn/model/agent.py), [backtest.py](src/tradedqn/services/backtest.py)).
+9. **Is Total Return enough?** No — a high return can hide huge risk. We also report **Sharpe** (risk-adjusted), **Max Drawdown** (worst pain), and **Win Rate** (consistency) so a lucky high-variance run can't pass as skill ([metrics.py](src/tradedqn/services/metrics.py)).
+10. **Which env/reward bugs fake a good backtest?** Look-ahead (using `price[t+1]` in the state), normalization fit on the full series, an off-by-one reward (crediting a trade before it executes), or zero transaction cost — all inflate results. Our env executes at `prices[t]` with the next day only as *outcome*, and a test asserts no look-ahead ([trading_env.py](src/tradedqn/env/trading_env.py)).
+11. **General policy vs an AAPL quirk?** Out-of-sample it *underperforms* (−23.2% vs −15.8%) — evidence it fit AAPL's 2020–2021 regime, not a general edge. Proving generality requires train/test across **multiple tickers and regimes** with consistent held-out Sharpe.
+12. **Extend to another (financial or non-financial) problem, same RL structure?** Swap the `Environment` behind the SDK: define a new `state`/`action`/`reward` (e.g. energy dispatch, inventory control) in a `TradingEnvironment`-shaped class; the agent / training / backtest / SDK layers are domain-agnostic ([Extending it](#extending-it)).
 
 ## Research notebook & sensitivity analysis (§9)
 
@@ -391,11 +441,19 @@ Conventions for changes (the project enforces them via pre-commit + CI):
 
 - **TDD** — write the test first; keep coverage ≥ 85% (this repo holds 100%).
 - **≤ 150 code lines per `.py`** (blank/comment lines excluded) — `scripts/check_file_sizes.sh`.
-- **Zero ruff violations** — `uv run ruff check src/ tests/ analysis/ scripts/ main.py`.
+- **Zero ruff violations** — `uv run ruff check src/ tests/ scripts/ main.py`.
 - **No hardcoded values** — everything tunable goes in `config/config.yaml`.
 - **uv only** — `uv sync --dev`; run everything via `uv run`.
 - Run the full gate before committing:
-  `uv run pytest tests/ --cov=src --cov-report=term-missing && uv run ruff check src/ tests/ analysis/ scripts/ main.py`.
+  `uv run pytest tests/ --cov=src --cov-report=term-missing && uv run ruff check src/ tests/ scripts/ main.py`.
+
+**Review process.** This is a single-author project, so there is no pull-request
+flow — development lands on `main`. The role peer review plays on a team is
+filled here by two gates: the **human↔AI responsibility contract** in `CLAUDE.md`
+(requirements, architecture, test-acceptance, and final sign-off are
+human-decided before any AI-generated change lands) and the **automated CI gate**
+(tests + coverage + lint + file-size + secret-scan must pass). Commit messages
+name the change's intent, giving a reviewable development arc.
 
 ## References
 
@@ -405,7 +463,13 @@ Conventions for changes (the project enforces them via pre-commit + CI):
 - Wang et al. (2016), *Dueling Network Architectures for Deep Reinforcement Learning* — the **Dueling** value/advantage split used here.
 - Fischer (2018), survey on *Reinforcement Learning in Financial Markets* — trading env, costs, backtesting.
 - Hugging Face *Deep RL Course*, Unit 3 — ε-greedy, Bellman target, replay.
-- Standards referenced: ISO/IEC 25010 (product quality), Nielsen's 10 usability heuristics, PEP 8 / ruff for style.
+**Standards & sources referenced** (§18):
+- **ISO/IEC 25010** — product-quality model; the "Quality bar" table maps all 8 characteristics.
+- **Nielsen's 10 usability heuristics** — mapped in the UI & UX section.
+- **PEP 8 / ruff** — code style, enforced in CI + pre-commit.
+- **MIT Software QA Plan** — informs the verification plan (TDD, 100% statement+branch coverage, lint/secret/file-size gates).
+- **Google Engineering Practices** (*eng-practices*) — small, reviewable changes + commit-intent / sign-off discipline (the human↔AI review process).
+- **Microsoft REST API Guidelines** — consistent verb/noun naming applied to the SDK's public surface (`prepare_data` / `train` / `backtest` / `recommend`).
 
 ## Credits
 

@@ -12,6 +12,8 @@ from collections.abc import Callable
 
 
 class RolloutService:
+    """Template-Method base: reset the env and play one episode, calling ``on_step``."""
+
     def __init__(self, env, agent) -> None:
         self.env = env
         self.agent = agent

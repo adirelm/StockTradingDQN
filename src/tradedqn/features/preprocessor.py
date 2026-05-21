@@ -1,8 +1,9 @@
-"""Preprocessor — assemble the 8 market features from OHLCV (config order).
+"""Preprocessor — assemble the brief's 8 market features from OHLCV (§4).
 
-The two remaining state features (``position``, ``cash_exposure``) are
-portfolio-dependent and are injected by the ``TradingEnvironment`` at runtime
-(Phase 3), not computed here — precomputing them would be meaningless and a leak.
+Features (config order): ``log_return, rsi_14, macd, macd_signal, macd_hist,
+bb_pct, vwap_dist, volume_norm``. The two remaining state channels
+(``position``, ``unrealized_pnl``) are portfolio-dependent and injected by the
+``TradingEnvironment`` at runtime — precomputing them would be meaningless and a leak.
 """
 
 from __future__ import annotations
@@ -13,14 +14,14 @@ from tradedqn.features import indicators as ind
 
 # The 8 market features, in config `features.names[:8]` order.
 MARKET_FEATURES = [
-    "price_return",
-    "normalized_price",
-    "high_low_range",
-    "volume_change",
-    "ratio_to_ma",
-    "volatility",
-    "rsi",
+    "log_return",
+    "rsi_14",
     "macd",
+    "macd_signal",
+    "macd_hist",
+    "bb_pct",
+    "vwap_dist",
+    "volume_norm",
 ]
 
 
@@ -32,17 +33,19 @@ class Preprocessor:
 
     def compute(self, ohlcv: pd.DataFrame) -> pd.DataFrame:
         """OHLCV → DataFrame with the 8 market columns; warmup NaN rows dropped."""
-        close, high, low, volume = (ohlcv[c] for c in ("Close", "High", "Low", "Volume"))
-        daily_return = ind.returns(close)
+        c = self.cfg
+        close, high, low, volume = (ohlcv[x] for x in ("Close", "High", "Low", "Volume"))
+        macd_line = ind.macd(close, c.macd_fast, c.macd_slow)
+        signal = ind.macd_signal(macd_line, c.macd_signal)
         columns = {
-            "price_return": daily_return,
-            "normalized_price": ind.normalized_price(close, self.cfg.ma_period),
-            "high_low_range": ind.high_low_range(high, low, close),
-            "volume_change": ind.returns(volume),
-            "ratio_to_ma": ind.ratio_to_ma(close, self.cfg.ma_period),
-            "volatility": ind.rolling_volatility(daily_return, self.cfg.volatility_window),
-            "rsi": ind.rsi(close, self.cfg.rsi_period) / 100.0,
-            "macd": ind.macd(close, self.cfg.macd_fast, self.cfg.macd_slow),
+            "log_return": ind.log_return(close),
+            "rsi_14": ind.rsi(close, c.rsi_period),
+            "macd": macd_line,
+            "macd_signal": signal,
+            "macd_hist": macd_line - signal,
+            "bb_pct": ind.bollinger_pct(close, c.ma_period, c.bb_num_std),
+            "vwap_dist": ind.vwap_dist(high, low, close, volume, c.ma_period),
+            "volume_norm": ind.volume_norm(volume, c.ma_period),
         }
         frame = pd.DataFrame(columns, index=ohlcv.index)[MARKET_FEATURES]
         return frame.dropna()

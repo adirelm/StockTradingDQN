@@ -1,7 +1,7 @@
 """TradingEnvironment — Gym-style env producing the 30×10 state.
 
 Channels 1–8 are the per-day market features; channels 9–10 are the agent's
-current ``position`` and ``cash_exposure`` broadcast across the window. The
+current ``position`` and ``unrealized_pnl`` broadcast across the window. The
 state at decision day ``t`` uses only feature rows up to and including ``t`` and
 executes at ``prices[t]`` — the next day's price is the *outcome*, never part of
 the observed state (no look-ahead).
@@ -16,9 +16,9 @@ from tradedqn.env.portfolio import Portfolio
 from tradedqn.env.reward import RewardFunction
 
 
-def assemble_state(market_window: np.ndarray, position: float, cash_exposure: float) -> np.ndarray:
+def assemble_state(market_window: np.ndarray, position: float, unrealized_pnl: float) -> np.ndarray:
     """Stack a market window (window, 8) with the 2 broadcast portfolio channels."""
-    portfolio = np.full((market_window.shape[0], 2), [position, cash_exposure], dtype=np.float32)
+    portfolio = np.full((market_window.shape[0], 2), [position, unrealized_pnl], dtype=np.float32)
     return np.hstack([market_window, portfolio]).astype(np.float32)
 
 
@@ -46,17 +46,20 @@ class TradingEnvironment:
         self._t = self.window - 1
 
     def reset(self) -> np.ndarray:
+        """Reset portfolio/reward/clock to the first window; return the opening state."""
         self.portfolio.reset()
         self.reward_fn.reset()
         self._t = self.window - 1
         return self._state()
 
     def _state(self) -> np.ndarray:
+        """Assemble the current (window×10) state from market + portfolio channels."""
         market = self._features[self._t - self.window + 1 : self._t + 1]  # (window, 8)
         price = self._prices[self._t]
-        return assemble_state(market, self.portfolio.position(price), self.portfolio.cash_exposure(price))
+        return assemble_state(market, self.portfolio.position(price), self.portfolio.unrealized_pnl(price))
 
     def step(self, action: int) -> tuple[np.ndarray, float, bool, dict]:
+        """Trade ``action`` at today's price, advance one day; return (state, reward, done, info)."""
         price_now = self._prices[self._t]
         trade = getattr(self.portfolio, self._actions[action])(price_now)
         shares_after = self.portfolio.shares

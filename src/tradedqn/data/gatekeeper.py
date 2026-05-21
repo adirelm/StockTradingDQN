@@ -49,10 +49,12 @@ class RateLimitGatekeeper:
         self._last_call: float | None = None
 
     def _prune(self, now: float) -> None:
+        """Drop call timestamps older than the rolling window."""
         while self._calls and now - self._calls[0] >= self.window:
             self._calls.popleft()
 
     def _throttle_min_interval(self, now: float, wait: bool) -> tuple[float, float]:
+        """Wait (or raise) until the minimum inter-call gap has elapsed."""
         if self._last_call is None:
             return 0.0, now
         gap = now - self._last_call
@@ -65,6 +67,7 @@ class RateLimitGatekeeper:
         return delay, self._clock()
 
     def _throttle_window(self, now: float, wait: bool) -> tuple[float, float]:
+        """Wait (or raise) until the per-window call quota frees a slot."""
         self._prune(now)
         if len(self._calls) < self.max_calls:
             return 0.0, now
@@ -89,6 +92,22 @@ class RateLimitGatekeeper:
         self._calls.append(now)
         self._last_call = now
         return waited_a + waited_b
+
+    def get_queue_status(self) -> dict:
+        """Monitoring snapshot (§5): window occupancy + seconds until the next slot frees.
+
+        ``seconds_until_free`` is the backpressure signal — 0 while a slot is
+        available, otherwise how long the next ``acquire`` would block.
+        """
+        now = self._clock()
+        self._prune(now)
+        used = len(self._calls)
+        free_in = 0.0 if used < self.max_calls else self.window - (now - self._calls[0])
+        return {
+            "calls_in_window": used,
+            "max_calls_per_window": self.max_calls,
+            "seconds_until_free": max(0.0, free_in),
+        }
 
     def execute(self, api_call: Callable[..., object], *args, **kwargs) -> object:
         """Throttle, run ``api_call``, retry transient failures, and log every attempt.

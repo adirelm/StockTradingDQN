@@ -36,7 +36,7 @@ jobs:
         run: uv sync --frozen --dev
 
       - name: Lint (ruff)
-        run: uv run ruff check src/ tests/ analysis/ scripts/
+        run: uv run ruff check src/ tests/ scripts/ main.py
 
       - name: secret-pattern scan (auditable evidence)
         run: bash scripts/check_no_secrets.sh

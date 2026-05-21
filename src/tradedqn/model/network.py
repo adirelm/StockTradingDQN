@@ -15,6 +15,8 @@ from torch import nn
 
 
 class DuelingDQN(nn.Module):
+    """Conv1D trunk → shared dense → value + advantage heads → Q = V + A − mean(A)."""
+
     def __init__(
         self,
         window: int,
@@ -42,6 +44,7 @@ class DuelingDQN(nn.Module):
 
     @classmethod
     def from_config(cls, cfg) -> DuelingDQN:
+        """Build the network from ``config.features``/``config.network`` (incl. the dueling flag)."""
         return cls(
             window=cfg.features.window_size,
             n_features=cfg.features.features_count,
@@ -53,6 +56,7 @@ class DuelingDQN(nn.Module):
         )
 
     def _trunk(self, x: torch.Tensor) -> torch.Tensor:
+        """Conv over time, then flatten + shared dense → the trunk feature vector."""
         # (B, window, features) → (B, features, window) so Conv1D spans time
         features = self.conv(x.transpose(1, 2))
         return self.trunk(torch.flatten(features, start_dim=1))
@@ -63,6 +67,7 @@ class DuelingDQN(nn.Module):
         return self.value_head(hidden), self.advantage_head(hidden)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Map a (B, window, features) batch to (B, n_actions) Q-values."""
         value, advantage = self.value_advantage(x)
         if not self.dueling:  # ablation: plain DQN — the advantage head is the Q head
             return advantage

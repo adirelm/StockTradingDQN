@@ -101,3 +101,23 @@ class TestExecute:
 
         with pytest.raises(RuntimeError, match="failed after 2 attempts"):
             gk.execute(always_fails)
+
+
+class TestQueueStatus:
+    def test_reports_occupancy_and_no_wait_under_limit(self):
+        clk = FakeClock()
+        gk = make(clk, min_interval_seconds=0.0, max_calls_per_window=3, window_seconds=60.0)
+        gk.acquire()
+        status = gk.get_queue_status()
+        assert status["calls_in_window"] == 1
+        assert status["max_calls_per_window"] == 3
+        assert status["seconds_until_free"] == 0.0
+
+    def test_reports_backpressure_when_window_full(self):
+        clk = FakeClock()
+        gk = make(clk, min_interval_seconds=0.0, max_calls_per_window=2, window_seconds=30.0)
+        gk.acquire()
+        gk.acquire()
+        status = gk.get_queue_status()
+        assert status["calls_in_window"] == 2
+        assert status["seconds_until_free"] == pytest.approx(30.0)

@@ -45,7 +45,7 @@ class TestCacheFirst:
         assert fetcher.calls == 1
         assert gk.executed == 1
         assert list(out.columns) == OHLCV_COLUMNS
-        assert (tmp_path / "AAPL_2020-01-01_2020-01-06_1d.csv").exists()
+        assert (tmp_path / "AAPL_2020-01-01_2020-01-06.parquet").exists()
 
     def test_cache_hit_does_not_fetch(self, client_parts):
         client, fetcher, gk = client_parts
@@ -73,3 +73,15 @@ class TestValidation:
                             fetch_fn=lambda *a: bad)
         with pytest.raises(ValueError, match="missing OHLCV columns"):
             client.get_ohlcv("X", "2020-01-01", "2020-01-02")
+
+
+class TestFallback:
+    def test_fetch_failure_falls_back_to_csv(self, tmp_path):
+        make_frame().to_csv(tmp_path / "AAPL.csv", index_label="Date")  # the §4 fallback
+
+        def boom(*a):
+            raise ConnectionError("network down")
+
+        client = DataClient(cache_dir=str(tmp_path), gatekeeper=SpyGatekeeper(), fetch_fn=boom)
+        out = client.get_ohlcv("AAPL", "2020-01-01", "2020-01-06")
+        assert list(out.columns) == OHLCV_COLUMNS and len(out) == 5

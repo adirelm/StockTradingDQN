@@ -18,6 +18,7 @@ from tradedqn.gui.charts import (
 
 
 def _episode_line(record: dict) -> str:
+    """Format one episode's live progress line (number, ε, reward)."""
     return (
         f"Episode {record['episode'] + 1}: "
         f"ε={record['epsilon']:.3f}, reward={record['reward']:.2f}"
@@ -25,11 +26,14 @@ def _episode_line(record: dict) -> str:
 
 
 class GuiController:
+    """GUI logic with no Tk dependency: each method calls the SDK and returns text (+a figure)."""
+
     def __init__(self, sdk) -> None:
         self.sdk = sdk
         self.last_backtest: dict | None = None
 
     def prepare(self, ticker=None, start=None, end=None) -> str:
+        """Prepare data (optional ticker/date overrides); return a status line."""
         sizes = self.sdk.prepare_data(ticker=ticker, start=start, end=end)
         return f"Prepared splits: {sizes}"
 
@@ -43,6 +47,7 @@ class GuiController:
         history: list[dict] = []
 
         def relay(record: dict) -> None:
+            """Track the record and relay a formatted progress line."""
             history.append(record)
             if on_progress is not None:
                 on_progress(_episode_line(record), list(history))
@@ -55,11 +60,13 @@ class GuiController:
         )
 
     def backtest(self) -> tuple[str, Figure]:
+        """Run the backtest; cache it and return (status line, two-panel figure)."""
         result = self.sdk.backtest()
         self.last_backtest = result
         return f"Backtest — {backtest_line(result)}", backtest_figure(result)
 
     def recommend(self) -> tuple[str, Figure]:
+        """Recommend an action; return (status line, Q-value bar figure)."""
         rec = self.sdk.recommend()
         return recommendation_line(rec), q_value_figure(rec["q_values"], rec["action_index"])
 
@@ -67,6 +74,7 @@ class GuiController:
         """Train Dueling vs plain DQN and chart both reward curves (§9 ablation)."""
 
         def relay(name: str, record: dict) -> None:
+            """Relay each architecture's per-episode progress line."""
             if on_progress is not None:
                 on_progress(f"{name} — {_episode_line(record).lower()}")
 

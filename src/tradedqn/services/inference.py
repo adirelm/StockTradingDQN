@@ -14,12 +14,15 @@ def action_names(cfg) -> list[str]:
 
 
 class InferenceService:
+    """Turns the latest market window into a Buy/Hold/Sell recommendation."""
+
     def __init__(self, agent, names: list[str]) -> None:
         self.agent = agent
         self.names = names
 
     @classmethod
     def from_config(cls, agent, cfg) -> InferenceService:
+        """Build the service with action names ordered by their config index."""
         return cls(agent, action_names(cfg))
 
     def recommend(self, state) -> dict:

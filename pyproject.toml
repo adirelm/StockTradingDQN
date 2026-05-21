@@ -14,6 +14,7 @@ dependencies = [
     "yfinance>=0.2.40",      # market data source (rate-limited — see §5 gatekeeper)
     "pyyaml>=6.0",           # config (no hardcoded hyperparameters — §7)
     "matplotlib>=3.7.0",     # equity curves / training charts
+    "pyarrow>=14.0",         # parquet cache (data/raw/*.parquet — §4)
 ]
 
 [build-system]
@@ -21,8 +22,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-# Only the `tradedqn` package ships in the wheel. `analysis/` (research),
-# `scripts/` (top-level launchers) and `tests/` are intentionally excluded
+# Only the `tradedqn` package ships in the wheel. `scripts/` (top-level
+# launchers), `notebooks/` (research) and `tests/` are intentionally excluded
 # — same §14 packaging discipline as Assignment 1.
 packages = ["src/tradedqn"]
 
@@ -36,6 +37,7 @@ ignore = ["E501"]
 
 [tool.coverage.run]
 source = ["src/tradedqn"]
+branch = true  # §6.2 — measure branch coverage, not just statement coverage
 # gui/app.py is the thin Tkinter window — it cannot open in headless CI, so it
 # is verified visually (screenshot-regression methodology), not by unit tests.
 # All GUI *logic* lives in the tested gui/controller.py + gui/charts.py.

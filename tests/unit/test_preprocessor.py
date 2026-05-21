@@ -42,9 +42,9 @@ class TestPreprocessor:
         assert not out.isna().any().any()
         assert len(out) < len(ohlcv)  # warmup rows were dropped
 
-    def test_rsi_column_scaled_to_unit_range(self, features_cfg, ohlcv):
+    def test_rsi_column_in_zero_to_hundred(self, features_cfg, ohlcv):
         out = Preprocessor(features_cfg).compute(ohlcv)
-        assert out["rsi"].between(0.0, 1.0).all()
+        assert out["rsi_14"].between(0.0, 100.0).all()  # raw RSI; the normalizer scales later
 
     def test_market_features_are_first_eight_config_names(self, features_cfg):
         assert list(features_cfg.names[:8]) == MARKET_FEATURES

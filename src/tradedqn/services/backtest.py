@@ -13,6 +13,8 @@ from tradedqn.services.rollout import RolloutService
 
 
 class BacktestService(RolloutService):
+    """Replays the greedy policy over a split → equity curve, trade markers, metrics."""
+
     def run(self) -> dict:
         """Greedy rollout over the env; return curves + trade markers + metrics."""
         initial = self.env.portfolio.initial_capital
@@ -20,6 +22,7 @@ class BacktestService(RolloutService):
                "trades": 0, "wins": 0, "trips": 0, "entry": None}
 
         def on_step(state, action, reward, next_state, done, info):
+            """Accumulate equity, price, and any trade marker for one step."""
             acc["equity"].append(info["value"])
             acc["prices"].append(info["price"])
             if info["traded"] > 0:
@@ -39,10 +42,12 @@ class BacktestService(RolloutService):
 
     @staticmethod
     def _benchmark(prices, initial: float) -> list[float]:
+        """Buy & Hold equity path scaled to the initial capital."""
         base = prices[0]
         return [initial * price / base for price in prices]
 
     def _summary(self, acc, initial) -> dict:
+        """Assemble curves + trade markers + metrics from the accumulated stats."""
         equity, prices = acc["equity"], acc["prices"]
         benchmark = self._benchmark(prices, initial) if prices else [initial]
         return {

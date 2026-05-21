@@ -16,12 +16,15 @@ Transition = tuple[np.ndarray, int, float, np.ndarray, bool]
 
 
 class ReplayBuffer:
+    """Fixed-capacity transition store with uniform mini-batch sampling."""
+
     def __init__(self, capacity: int, rng: np.random.Generator | None = None) -> None:
         self.capacity = int(capacity)
         self._buffer: deque[Transition] = deque(maxlen=self.capacity)
         self._rng = rng or np.random.default_rng()
 
     def push(self, state, action, reward, next_state, done) -> None:
+        """Append one (state, action, reward, next_state, done) transition."""
         self._buffer.append(
             (
                 np.asarray(state, dtype=np.float32),

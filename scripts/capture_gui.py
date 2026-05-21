@@ -22,11 +22,17 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUT = PROJECT_ROOT / "docs" / "assets" / "gui_dashboard.png"
 
 
-def _populate(window: MainWindow, episodes: int) -> None:
-    """Drive the GUI through prepare → short train → backtest so a chart renders."""
+def _populate(window: MainWindow, episodes: int, view: str) -> None:
+    """Drive the GUI to the requested view so its chart/state renders for capture."""
     window.status.set(window.controller.prepare())
-    window.controller.sdk.train(episodes=episodes)  # brief train → a real equity curve
-    window._do_backtest()  # populates the embedded chart + the status-bar metrics
+    window._episodes.set(episodes)
+    if view == "compare":
+        window._do_compare()            # Dueling-vs-plain reward overlay
+    elif view == "train":
+        window._do_train()              # live-animating reward + ε chart
+    else:                               # backtest / recommend need a trained agent first
+        window.controller.sdk.train(episodes=episodes)
+        (window._do_recommend if view == "recommend" else window._do_backtest)()
 
 
 def _grab(window: MainWindow, out_path: Path) -> None:
@@ -37,11 +43,11 @@ def _grab(window: MainWindow, out_path: Path) -> None:
     subprocess.run(["screencapture", "-x", "-R", region, str(out_path)], check=True)
 
 
-def capture(out_path: Path, episodes: int) -> None:
+def capture(out_path: Path, episodes: int, view: str) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     window = MainWindow(TradingSDK())
     window.root.geometry("1024x720+60+60")
-    _populate(window, episodes)
+    _populate(window, episodes, view)
     window.root.deiconify()
     window.root.lift()
     window.root.attributes("-topmost", True)
@@ -55,8 +61,12 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Capture the TradeDQN GUI to a PNG.")
     parser.add_argument("--episodes", type=int, default=3, help="short train length")
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT, help="output PNG path")
+    parser.add_argument(
+        "--view", default="backtest",
+        choices=["backtest", "train", "recommend", "compare"], help="which GUI state to capture",
+    )
     args = parser.parse_args(argv)
-    capture(args.out, args.episodes)
+    capture(args.out, args.episodes, args.view)
     print(f"saved {args.out}")
 
 

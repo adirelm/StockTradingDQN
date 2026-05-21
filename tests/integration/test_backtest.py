@@ -18,6 +18,22 @@ class ScriptedAgent:
         return action
 
 
+class _SellOnceEnv:
+    """Env emitting a single 'sell' step with traded>0 and no prior buy (edge case)."""
+
+    class _Portfolio:
+        initial_capital = 1000.0
+
+    def __init__(self) -> None:
+        self.portfolio = self._Portfolio()
+
+    def reset(self):
+        return [0.0]
+
+    def step(self, action):
+        return [0.0], 0.0, True, {"value": 1100.0, "price": 110.0, "action": "sell", "traded": 5.0}
+
+
 class TestBacktest:
     def test_run_returns_full_summary(self, toy_env, dqn_agent):
         result = BacktestService(toy_env, dqn_agent).run()
@@ -61,3 +77,11 @@ class TestBacktest:
         sides = [m["action"] for m in result["trade_markers"]]
         assert sides == ["buy", "sell"]  # markers carry side + step + price for the chart
         assert {"step", "price", "action"} <= result["trade_markers"][0].keys()
+
+    def test_sell_without_prior_buy_is_recorded_but_not_a_round_trip(self):
+        # Defensive edge case (§6.3): a sell with no tracked entry doesn't crash or
+        # count as a round-trip — exercises the `entry is not None` guard's false branch.
+        result = BacktestService(_SellOnceEnv(), ScriptedAgent([0])).run()
+        assert result["num_trades"] == 1
+        assert result["win_rate"] == 0.0
+        assert result["trade_markers"][0]["action"] == "sell"

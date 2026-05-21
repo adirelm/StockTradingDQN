@@ -16,6 +16,8 @@ from tradedqn.services.rollout import RolloutService
 
 
 class TrainingService(RolloutService):
+    """Runs the DQN training loop (remember → learn → decay ε) over the env."""
+
     def train(self, episodes: int, on_episode: Callable[[dict], None] | None = None) -> list[dict]:
         """Train for ``episodes`` passes; return the per-episode history.
 
@@ -32,9 +34,11 @@ class TrainingService(RolloutService):
         return history
 
     def _train_episode(self, index: int) -> dict:
+        """Run one training episode (rollout + ε-decay); return its summary record."""
         stats = {"reward": 0.0, "losses": [], "value": self.env.portfolio.initial_capital}
 
         def on_step(state, action, reward, next_state, done, info):
+            """Remember the transition, learn, and accumulate episode stats."""
             self.agent.remember(state, action, reward, next_state, done)
             loss = self.agent.learn()
             if loss is not None:

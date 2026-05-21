@@ -8,10 +8,10 @@ seed: 42                       # global RNG seed → reproducible runs (§6 conf
 
 data:
   ticker: "AAPL"               # symbol to trade
-  start: "2014-01-01"          # ~10 years of daily history
-  end: "2024-01-01"
+  start: "2020-01-01"          # binding experiment window (§4)
+  end: "2023-01-01"
   interval: "1d"
-  cache_dir: "data/cache"      # local CSV cache → offline, reproducible runs
+  cache_dir: "data/raw"        # parquet cache (+ CSV fallback) → offline, reproducible
   # §5 API gatekeeper — Yahoo Finance rate-limits rapid repeat calls.
   rate_limit:
     min_interval_seconds: 2.0  # minimum gap between live API calls
@@ -22,24 +22,24 @@ data:
 features:
   window_size: 30              # state = 30 trading days  (sₜ ∈ ℝ^{30×10})
   features_count: 10
-  names:                       # the 10 features from the deck, in channel order
-    - price_return
-    - normalized_price
-    - high_low_range
-    - volume_change
-    - ratio_to_ma
-    - volatility
-    - rsi
+  names:                       # the brief's 10 features (§4), in channel order
+    - log_return
+    - rsi_14
     - macd
+    - macd_signal
+    - macd_hist
+    - bb_pct
+    - vwap_dist
+    - volume_norm
     - position
-    - cash_exposure
-  ma_period: 20                # moving-average lookback
+    - unrealized_pnl
+  ma_period: 20                # window for Bollinger %B, VWAP distance, volume-norm
+  bb_num_std: 2.0              # Bollinger band width (±k·σ)
   rsi_period: 14
   macd_fast: 12
   macd_slow: 26
   macd_signal: 9
-  volatility_window: 10
-  normalize: true              # scale features to ~[0,1] (divergence guard)
+  normalize: true              # min-max scale, fit on train only (no leakage)
 
 split:                         # chronological — no look-ahead / no test leakage
   train: 0.70
@@ -48,9 +48,9 @@ split:                         # chronological — no look-ahead / no test leaka
 
 env:
   initial_capital: 10000.0
-  transaction_cost: 0.001      # C_t — fraction charged per Buy/Sell
-  slippage: 0.0005             # S_t — executed-vs-expected price fraction
-  risk_lambda: 0.1             # λ — weight on the Sharpe term in the reward
+  transaction_cost: 0.001      # α — transaction_cost_alpha (§7), charged per Buy/Sell
+  slippage: 0.001              # β — slippage_beta (§7), executed-vs-expected fraction
+  risk_lambda: 1.0             # γ — sharpe_bonus_gamma (§7), weight on the Sharpe term
   sharpe_window: 20            # rolling window for Sharpe in the reward
 
 actions:                       # discrete action space (exact encoding from deck)

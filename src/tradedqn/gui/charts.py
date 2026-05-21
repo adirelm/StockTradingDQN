@@ -15,6 +15,7 @@ _ACTIONS = ("Sell", "Hold", "Buy")
 
 
 def _plot_equity(ax, equity, benchmark) -> None:
+    """Draw the DQN-vs-Buy&Hold equity lines on ``ax``."""
     ax.plot(equity, label="DQN policy", color="#1f77b4")
     ax.plot(benchmark, label="Buy & Hold", color="#888888", linestyle="--")
     ax.set_title("Equity curve vs Buy & Hold")
@@ -24,6 +25,7 @@ def _plot_equity(ax, equity, benchmark) -> None:
 
 
 def _plot_prices(ax, prices, markers) -> None:
+    """Draw the price line with ▲buy / ▼sell trade markers on ``ax``."""
     ax.plot(prices, color="#444444", linewidth=1.0, label="price")
     for side, sym, color in (("buy", "^", "#2ca02c"), ("sell", "v", "#d62728")):
         pts = [m for m in markers if m["action"] == side]

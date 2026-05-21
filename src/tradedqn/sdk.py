@@ -20,6 +20,8 @@ from tradedqn.services.training import TrainingService
 
 
 class TradingSDK:
+    """The single facade the UIs call: prepare → train → backtest → recommend (+save/load)."""
+
     def __init__(self, config_path=None, cfg=None, data_client=None, agent=None) -> None:
         self.cfg = cfg or load_config(config_path or DEFAULT_CONFIG_PATH)
         self.data_client = data_client or DataClient(self.cfg.data.cache_dir, self._gatekeeper())
@@ -29,6 +31,7 @@ class TradingSDK:
         self._splits: dict | None = None
 
     def _gatekeeper(self) -> RateLimitGatekeeper:
+        """Build the rate-limit gatekeeper from the config's ``data.rate_limit``."""
         r = self.cfg.data.rate_limit
         return RateLimitGatekeeper(
             r.min_interval_seconds, r.max_calls_per_window, r.window_seconds, r.max_retries
@@ -56,23 +59,28 @@ class TradingSDK:
         return {name: len(frame) for name, (frame, _) in self._splits.items()}
 
     def _require_data(self) -> None:
+        """Raise if ``prepare_data()`` has not been called yet."""
         if self._splits is None:
             raise RuntimeError("call prepare_data() before train/backtest/recommend")
 
     def _env(self, split: str) -> TradingEnvironment:
+        """Build a TradingEnvironment over the named split's features + prices."""
         features, prices = self._splits[split]
         return TradingEnvironment(features, prices.to_numpy(), self.cfg)
 
     def train(self, episodes: int | None = None, on_episode=None) -> list[dict]:
+        """Train for ``episodes`` (config default); stream per-episode records to ``on_episode``."""
         self._require_data()
         episodes = episodes if episodes is not None else self.cfg.training.episodes
         return TrainingService(self._env("train"), self.agent).train(episodes, on_episode=on_episode)
 
     def backtest(self, split: str = "test") -> dict:
+        """Greedy backtest on ``split`` (default the held-out test); return curves + metrics."""
         self._require_data()
         return BacktestService(self._env(split), self.agent).run()
 
     def _cfg_with_dueling(self, dueling: bool) -> Config:
+        """Return a config copy with ``network.dueling`` overridden (for the ablation)."""
         data = self.cfg.to_dict()
         data["network"]["dueling"] = dueling
         return Config(data)
@@ -98,10 +106,12 @@ class TradingSDK:
         features, _ = self._splits[split]
         window = self.cfg.features.window_size
         market = features.to_numpy(dtype="float32")[-window:]
-        return self.inference.recommend(assemble_state(market, position=0.0, cash_exposure=1.0))
+        return self.inference.recommend(assemble_state(market, position=0.0, unrealized_pnl=0.0))
 
     def save_brain(self, path: str) -> None:
+        """Save the agent checkpoint to ``path`` (refused if it escapes the project root)."""
         self.agent.save(assert_in_project(path))
 
     def load_brain(self, path: str) -> None:
+        """Load an agent checkpoint from ``path`` (path-guarded)."""
         self.agent.load(assert_in_project(path))

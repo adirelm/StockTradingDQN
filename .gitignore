@@ -27,11 +27,13 @@ venv/
 .DS_Store
 Thumbs.db
 
-# Data caches — raw market data is re-fetchable from the API, not source.
-# A small reproducible sample MAY be committed deliberately (see config).
+# Data caches — the parquet cache is re-fetchable from the API, not source.
 data/cache/
 data/raw/
 *.parquet
+# ...but the small CSV fallback IS committed for offline reproducibility (§4).
+!data/raw/
+!data/raw/*.csv
 
 # Trained models / checkpoints (large, regenerable from training).
 # We serialize with torch.save (state_dict), never arbitrary objects.

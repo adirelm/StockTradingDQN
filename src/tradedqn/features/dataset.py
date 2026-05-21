@@ -53,4 +53,5 @@ class MinMaxNormalizer:
         return scaled.clip(lower=0.0, upper=1.0)
 
     def fit_transform(self, train_frame: pd.DataFrame) -> pd.DataFrame:
+        """Fit the scaler on ``train_frame`` and return it transformed."""
         return self.fit(train_frame).transform(train_frame)
