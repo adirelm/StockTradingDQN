@@ -84,3 +84,6 @@ AGENTS.md
 
 # Claude Code machine-local settings
 .claude/settings.local.json
+
+# transient run logs
+results/*.log
