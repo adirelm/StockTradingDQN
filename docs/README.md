@@ -17,10 +17,12 @@ Build order (see `instructions/assignment-2/WORKING_METHODOLOGY.md`):
 | 7 | `PRD_sdk.md` | SDK facade (single business-logic entry point) |
 | 8 | `PRD_terminal.md` | terminal menu over the SDK (built first — agent-drivable) |
 | 9 | `PRD_gui.md` | GUI + training interface over the SDK |
-| 10 | `PRD_docs.md` | README, block diagrams, results analysis, cost + ISO mapping |
+| 10 | the root `README.md` | block diagrams, results analysis, cost + ISO mapping (the deliverable itself) |
 
 Each PRD is approved by the human (architect) **before** code is generated
 against it — `CLAUDE.md` §1.4 contract.
 
-Also planned here: `PROMPTS.md` (verbatim prompt log), `COST_ANALYSIS.md`
-(§11 token/cost), and architecture / OOP block diagrams referenced by the README.
+Umbrella documents in this folder: [`PRD.md`](PRD.md) (project-wide requirements),
+[`PLAN.md`](PLAN.md) (architecture + ADRs + concurrency), [`TODO.md`](TODO.md)
+(phased tasks + DoD), [`PROMPTS.md`](PROMPTS.md) (prompt log), and
+[`COST_ANALYSIS.md`](COST_ANALYSIS.md) (§11 token/cost).

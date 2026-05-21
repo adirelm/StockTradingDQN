@@ -10,7 +10,7 @@ from matplotlib.figure import Figure
 
 # UI-styling literals (size/dpi) are local presentation choices, not config.
 _FIGSIZE = (6.0, 3.2)
-_DPI = 100
+_DPI = 160  # high-resolution figures for the README / docs (§9.3)
 
 
 def equity_figure(equity, benchmark) -> Figure:
