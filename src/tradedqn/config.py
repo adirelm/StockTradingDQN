@@ -15,6 +15,7 @@ import yaml
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG_PATH = "config/config.yaml"
+SUPPORTED_CONFIG_MAJOR = 1  # §8.1 — config-version compatibility checked at load
 
 
 class Config(SimpleNamespace):
@@ -79,4 +80,18 @@ def load_config(path: str | None = None) -> Config:
         raise ValueError(
             f"config root must be a mapping, got {type(data).__name__} from {config_path}"
         )
+    _check_version(data, config_path)
     return Config(data)
+
+
+def _check_version(data: dict[str, Any], config_path: Path) -> None:
+    """§8.1 — refuse a config whose major version this code can't support."""
+    version = data.get("version")
+    if version is None:
+        raise ValueError(f"config {config_path} is missing the required 'version' key")
+    major = str(version).split(".")[0]
+    if major != str(SUPPORTED_CONFIG_MAJOR):
+        raise ValueError(
+            f"config version {version!r} is incompatible — this build supports "
+            f"major version {SUPPORTED_CONFIG_MAJOR}.x"
+        )

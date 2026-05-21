@@ -2,6 +2,8 @@
 # parameter (§7: no hardcoded values in source). Parameter names mirror
 # Dr. Segal's reference deck so a grader can cross-map 1:1.
 
+version: "1.0.0"               # config schema version (§8.1; validated at load)
+
 seed: 42                       # global RNG seed → reproducible runs (§6 config tests)
 
 data:

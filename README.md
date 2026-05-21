@@ -129,6 +129,50 @@ uv run main.py gui      # Tkinter + matplotlib dashboard
 uv run python scripts/generate_results.py --episodes 40
 ```
 
+A typical session: **Prepare data** (fetch + cache + features + split) → **Train**
+(per-episode reward/ε/loss printed) → **Backtest** (equity vs Buy&Hold + metrics)
+→ **Recommend** (latest window → Buy/Hold/Sell). Each terminal action prints its
+result; the GUI shows the same via a status line + an embedded chart.
+
+## Configuration
+
+All tunable parameters live in [`config/config.yaml`](config/config.yaml) — there
+are **no hardcoded values** in source (§7). The file carries a `version` key that
+the loader validates at startup. Key groups:
+
+| Group | Keys | Effect |
+|---|---|---|
+| `data` | `ticker`, `start`, `end`, `interval`, `cache_dir`, `rate_limit.*` | which symbol/period to fetch; §5 gatekeeper throttle + cache |
+| `features` | `window_size` (30), `features_count` (10), `names`, indicator periods, `normalize` | the 30×10 state and how indicators are computed/scaled |
+| `split` | `train`/`validation`/`test` | chronological split ratios (no look-ahead) |
+| `env` | `initial_capital`, `transaction_cost`, `slippage`, `risk_lambda`, `sharpe_window` | reward `r = ΔV − C − S + λ·Sharpe` |
+| `network` | `conv_channels` `[32,64]`, `kernel_size`, `dense_units` | Dueling Conv1D DQN shape |
+| `training` | `gamma`, `learning_rate`, `epsilon_*`, `replay_capacity`, `batch_size`, `train_frequency`, `target_update_frequency` | the DQN learning loop |
+
+Edit values, re-run — nothing in code needs to change.
+
+## Extending it
+
+The `TradingSDK` constructor is the supported extension surface (dependency
+injection): `TradingSDK(cfg=…, data_client=…, agent=…)`. To add:
+
+- **a new indicator** → add one pure function in [`features/indicators.py`](src/tradedqn/features/indicators.py) and reference it in `Preprocessor` + the `features.names`/`features_count` config (one module + config).
+- **a new reward term** → add it in [`env/reward.py`](src/tradedqn/env/reward.py) `RewardFunction.compute` (one place; components are returned in `info`).
+- **a different data source** → implement an object with `get_ohlcv(...)` and inject it as `data_client` — no engine change.
+- **a different network** → swap the `agent`'s policy/target builder; the SDK/UIs are untouched.
+
+## Concurrency & thread safety (§15)
+
+The training loop is **deliberately single-threaded**. The two cost centres are
+**CPU-bound** (PyTorch forward/backward in training & inference) and **I/O-bound**
+(the one rate-limited Yahoo fetch, which is cache-first so it usually makes zero
+calls). For a single sequential RL loop over one symbol at this scale, process/
+thread parallelism adds complexity without a real win, and the GIL is not the
+bottleneck. `RateLimitGatekeeper` keeps mutable state (a timestamp deque) and is
+**single-threaded by contract** — not thread-safe; if training is ever fanned out
+(e.g. a parallel multi-ticker sweep), wrap its `acquire`/`execute` in a lock or
+give each worker its own gatekeeper.
+
 ## Results & analysis
 
 <!-- RESULTS:START (filled by scripts/generate_results.py) -->
@@ -216,6 +260,8 @@ PRD-first, 10 phases, the decisions and the AI-rework tax — is in
 | Security | §5 rate-limit gatekeeper; `weights_only` load; path-traversal guard; secret-scan | `gatekeeper.py`, `agent.load`, `assert_in_project` |
 | Performance efficiency | small net, CPU-fine; cache avoids refetch | `docs/COST_ANALYSIS.md` |
 | Usability | terminal + GUI, both error-safe | `test_menu`, `test_gui_controller` |
+| Compatibility | stdlib-only GUI (Tkinter), no new GUI dep; CSV/Yahoo data interop; one config consumed by every interface | `gui/`, `data/client.py`, `config/config.yaml` |
+| Portability | pure-Python, `uv`-locked install; CPU/MPS device-agnostic; OS-independent paths | `uv.lock`, `model/agent.py` (`device`), `config.assert_in_project` |
 
 **Gates** (pre-commit + CI): TDD with **100% coverage** (gate ≥85%), zero ruff
 violations, ≤150 code lines/file, secret-scan, uv-only.
@@ -242,6 +288,34 @@ config/config.yaml   all hyperparameters (no hardcoded values)
 docs/          PRDs (per phase), ADRs, PROMPTS, COST_ANALYSIS
 main.py        terminal (default) / gui entry point
 ```
+
+## Contributing
+
+Conventions for changes (the project enforces them via pre-commit + CI):
+
+- **TDD** — write the test first; keep coverage ≥ 85% (this repo holds 100%).
+- **≤ 150 code lines per `.py`** (blank/comment lines excluded) — `scripts/check_file_sizes.sh`.
+- **Zero ruff violations** — `uv run ruff check src/ tests/ analysis/ scripts/ main.py`.
+- **No hardcoded values** — everything tunable goes in `config/config.yaml`.
+- **uv only** — `uv sync --dev`; run everything via `uv run`.
+- Run the full gate before committing:
+  `uv run pytest tests/ --cov=src --cov-report=term-missing && uv run ruff check src/ tests/ analysis/ scripts/ main.py`.
+
+## References
+
+- Sutton & Barto (2018), *Reinforcement Learning: An Introduction*, 2nd ed. — RL, Bellman, policy/value.
+- Watkins & Dayan (1992), *Q-learning* — the off-policy Q-update.
+- Mnih et al. (2015), *Human-level control through deep reinforcement learning*, Nature — **DQN** (experience replay + target network).
+- Wang et al. (2016), *Dueling Network Architectures for Deep Reinforcement Learning* — the **Dueling** value/advantage split used here.
+- Fischer (2018), survey on *Reinforcement Learning in Financial Markets* — trading env, costs, backtesting.
+- Hugging Face *Deep RL Course*, Unit 3 — ε-greedy, Bellman target, replay.
+- Standards referenced: ISO/IEC 25010 (product quality), Nielsen's 10 usability heuristics, PEP 8 / ruff for style.
+
+## Credits
+
+- **Data**: [Yahoo Finance](https://finance.yahoo.com/) via [`yfinance`](https://github.com/ranaroussi/yfinance).
+- **Libraries**: PyTorch, NumPy, pandas, Matplotlib, PyYAML; tooling: uv, ruff, pytest.
+- Built for the Bar-Ilan University Vibe Coding Workshop (Dr. Yoram Segal).
 
 ## License
 

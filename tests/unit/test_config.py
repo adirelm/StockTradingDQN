@@ -51,6 +51,21 @@ class TestLoaderBehaviour:
         with pytest.raises(ValueError, match="must be a mapping"):
             load_config(str(bad))
 
+    def test_project_config_has_version(self, cfg):
+        assert str(cfg.version).startswith("1.")
+
+    def test_missing_version_key_raises(self, tmp_path):
+        f = tmp_path / "nover.yaml"
+        f.write_text("seed: 1\n", encoding="utf-8")
+        with pytest.raises(ValueError, match="missing the required 'version'"):
+            load_config(str(f))
+
+    def test_incompatible_major_version_raises(self, tmp_path):
+        f = tmp_path / "old.yaml"
+        f.write_text('version: "2.0.0"\nseed: 1\n', encoding="utf-8")
+        with pytest.raises(ValueError, match="incompatible"):
+            load_config(str(f))
+
 
 class TestAssertInProject:
     def test_absolute_path_passes_through(self, tmp_path):
