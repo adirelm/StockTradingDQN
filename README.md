@@ -195,32 +195,45 @@ Select: 4
 Recommended action: BUY  (Q = [0.12, 0.20, 0.31])
 ```
 
-**GUI** (Tkinter + matplotlib) — buttons drive the SDK; the chart panel embeds
-the same figures shipped under `results/analysis/` (training reward, equity vs
-Buy & Hold), and a status line shows the latest result:
+**GUI** (Tkinter + matplotlib) — a toolbar drives the SDK with inputs you can
+play with: a **ticker** + **date range** (train on AAPL, MSFT, TSLA…), an
+**episodes** count, and five actions:
 
-```
-┌──────────────────────────── TradeDQN ─────────────────────────────┐
-│ [ Prepare data ] [ Train ] [ Backtest ] [ Recommend ]             │
-├────────────────────────────────────────────────────────────────────┤
-│   equity vs Buy & Hold   ╱╲      ___                               │
-│        ____╱╲__╱╲___╱╲__╱   ╲___╱   (matplotlib FigureCanvas)      │
-├────────────────────────────────────────────────────────────────────┤
-│ Return +4.5% vs Buy&Hold +12.1% · Sharpe 0.27 · trades 72         │
-└────────────────────────────────────────────────────────────────────┘
-```
+- **Prepare data** — fetch + split + normalize the chosen symbol/range.
+- **Train** — streams a **live-animating** reward + ε chart and a progress bar
+  episode-by-episode, instead of freezing the window.
+- **Backtest** — a two-panel figure: the **price with ▲buy / ▼sell markers**
+  (you see *when* the agent traded) over the **equity-vs-Buy & Hold** curve.
+- **Recommend** — a **Q-value bar chart** (Sell/Hold/Buy) with the chosen action
+  highlighted.
+- **Compare arch** — trains a **Dueling** vs a **plain DQN** on the same data and
+  overlays their reward curves (the §9 ablation, live from the GUI).
 
-> A live GUI window screenshot needs a display; this was developed/CI'd headless,
-> so the chart-panel content is shown via the committed `results/analysis/*.png`
-> and the layout above. Capturing the rendered window on a desktop is a one-liner
-> (`MainWindow(TradingSDK()).run()` then screenshot) and a known to-do.
+The shot below is the real window (`uv run main.py gui`), captured by
+`scripts/capture_gui.py`:
 
-**UX quality criteria.** *Learnability* — one obvious menu / four labelled
-buttons in pipeline order. *Efficiency* — single keypress / click per action.
-*Memorability* — the same Prepare→Train→Backtest→Recommend order in both UIs.
+![TradeDQN GUI dashboard](docs/assets/gui_dashboard.png)
+
+> A genuine capture, not a mockup — regenerate any time with
+> `uv run python scripts/capture_gui.py`. The numbers come from a short demo
+> train; over so few episodes the outcome swings either side of Buy & Hold
+> run-to-run (the honest small-sample story in **Results**). The episode count
+> defaults from `config.yaml` (`gui.default_train_episodes`); the dueling head is
+> toggled by `network.dueling`.
+>
+> **Running the GUI under uv.** The uv-managed (standalone) Python ships Tcl/Tk
+> but hardcodes the build machine's search path, so a bare `tkinter.Tk()` would
+> abort with *"Tcl wasn't installed properly."* `gui/tcl_setup.py` fixes this at
+> launch by pointing `TCL_LIBRARY`/`TK_LIBRARY` at the interpreter's own bundled
+> Tcl/Tk (and leaves a system/Homebrew Python untouched) — so `uv run main.py gui`
+> just works, no manual setup.
+
+**UX quality criteria.** *Learnability* — labelled buttons in pipeline order.
+*Efficiency* — single keypress / click per action. *Memorability* — the same
+Prepare→Train→Backtest→Recommend order in both UIs (the GUI adds Compare).
 *Error prevention* — actions are safe in any order; calling Train before Prepare
 yields a clear message, not a crash. *Satisfaction* — immediate textual + chart
-feedback.
+feedback, with training animating live.
 
 **Nielsen's 10 heuristics.** (1) *Visibility of status* — every action prints/
 shows its result + a status line. (2) *Match to real world* — Buy/Hold/Sell,
