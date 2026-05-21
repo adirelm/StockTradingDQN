@@ -16,6 +16,7 @@ from torch import nn
 
 from tradedqn.model.network import DuelingDQN
 from tradedqn.model.replay_buffer import ReplayBuffer
+from tradedqn.seeding import seed_everything
 
 
 class DQNAgent:
@@ -32,7 +33,9 @@ class DQNAgent:
         self.epsilon = float(cfg.training.epsilon_start)
         self.epsilon_min = float(cfg.training.epsilon_min)
         self.epsilon_decay = float(cfg.training.epsilon_decay)
-        self._rng = np.random.default_rng(getattr(cfg, "seed", None))
+        seed = getattr(cfg, "seed", None)
+        seed_everything(seed)  # seed Torch *before* weight init so a fresh run reproduces
+        self._rng = np.random.default_rng(seed)
         self.policy = DuelingDQN.from_config(cfg).to(self.device)
         self.target = DuelingDQN.from_config(cfg).to(self.device)
         self.sync_target()

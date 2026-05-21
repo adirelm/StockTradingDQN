@@ -2,41 +2,41 @@
   "learning_rate": [
     {
       "value": 0.0005,
-      "val_sharpe": -0.14668502638917688,
-      "val_return": -0.03529201470164611,
-      "trades": 5
+      "val_sharpe": -2.2787392829665927,
+      "val_return": -0.2007127947573919,
+      "trades": 13
     },
     {
       "value": 0.001,
-      "val_sharpe": -0.4010818393532823,
-      "val_return": -0.053769994822360556,
-      "trades": 11
+      "val_sharpe": -0.10157304686070229,
+      "val_return": -0.02683786319747783,
+      "trades": 9
     },
     {
       "value": 0.005,
-      "val_sharpe": -0.33681092239893573,
-      "val_return": -0.04329313942497448,
-      "trades": 9
+      "val_sharpe": 0.05318261121602813,
+      "val_return": -0.008633337537044095,
+      "trades": 15
     }
   ],
   "gamma": [
     {
       "value": 0.9,
-      "val_sharpe": -2.0626327552372503,
-      "val_return": -0.18518926197612917,
-      "trades": 15
+      "val_sharpe": -0.36332556951079303,
+      "val_return": -0.05451976026913674,
+      "trades": 13
     },
     {
       "value": 0.95,
-      "val_sharpe": -2.3171561489292376,
-      "val_return": -0.18357441882565895,
-      "trades": 15
+      "val_sharpe": -0.10157304686070229,
+      "val_return": -0.02683786319747783,
+      "trades": 9
     },
     {
       "value": 0.99,
-      "val_sharpe": -1.4121419297206952,
-      "val_return": -0.14044364363664208,
-      "trades": 11
+      "val_sharpe": 0.3770077664335935,
+      "val_return": 0.022357247654571255,
+      "trades": 15
     }
   ]
 }

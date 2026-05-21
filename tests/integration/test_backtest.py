@@ -31,7 +31,8 @@ class _SellOnceEnv:
         return [0.0]
 
     def step(self, action):
-        return [0.0], 0.0, True, {"value": 1100.0, "price": 110.0, "action": "sell", "traded": 5.0}
+        info = {"value": 1100.0, "price_now": 100.0, "price": 110.0, "action": "sell", "traded": 5.0}
+        return [0.0], 0.0, True, info
 
 
 class TestBacktest:
@@ -73,7 +74,10 @@ class TestBacktest:
     def test_exposes_price_curve_and_trade_markers(self, toy_env):
         agent = ScriptedAgent([2, 1, 1, 1, 1, 0])  # buy, holds, sell
         result = BacktestService(toy_env, agent).run()
-        assert len(result["price_curve"]) == len(result["equity_curve"]) - 1
+        # price_curve is anchored at the first execution price, so it aligns 1:1 with equity
+        assert len(result["price_curve"]) == len(result["equity_curve"])
+        first_buy = result["trade_markers"][0]
+        assert first_buy["step"] == 0 and first_buy["price"] == result["price_curve"][0]
         sides = [m["action"] for m in result["trade_markers"]]
         assert sides == ["buy", "sell"]  # markers carry side + step + price for the chart
         assert {"step", "price", "action"} <= result["trade_markers"][0].keys()

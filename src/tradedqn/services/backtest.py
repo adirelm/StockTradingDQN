@@ -23,12 +23,14 @@ class BacktestService(RolloutService):
 
         def on_step(state, action, reward, next_state, done, info):
             """Accumulate equity, price, and any trade marker for one step."""
+            if not acc["prices"]:                        # anchor curves at the first decision
+                acc["prices"].append(info["price_now"])  # day's execution price (= equity[0])
             acc["equity"].append(info["value"])
             acc["prices"].append(info["price"])
             if info["traded"] > 0:
                 acc["trades"] += 1
                 acc["markers"].append(
-                    {"step": len(acc["prices"]) - 1, "price": info["price"], "action": info["action"]}
+                    {"step": len(acc["prices"]) - 2, "price": info["price_now"], "action": info["action"]}
                 )
                 if info["action"] == "buy":
                     acc["entry"] = info["value"]
@@ -42,21 +44,23 @@ class BacktestService(RolloutService):
 
     @staticmethod
     def _benchmark(prices, initial: float) -> list[float]:
-        """Buy & Hold equity path scaled to the initial capital."""
+        """Buy & Hold equity path anchored at the first execution price (= initial)."""
         base = prices[0]
         return [initial * price / base for price in prices]
 
     def _summary(self, acc, initial) -> dict:
         """Assemble curves + trade markers + metrics from the accumulated stats."""
         equity, prices = acc["equity"], acc["prices"]
+        # prices is anchored at the first decision day's price, so it is the same
+        # length as equity and the Buy & Hold curve aligns step-for-step with it.
         benchmark = self._benchmark(prices, initial) if prices else [initial]
         return {
             "equity_curve": equity,
-            "benchmark_curve": [initial, *benchmark],
+            "benchmark_curve": benchmark,
             "price_curve": prices,
             "trade_markers": acc["markers"],
             "total_return": metrics.total_return(equity),
-            "benchmark_return": metrics.total_return([initial, *benchmark]),
+            "benchmark_return": metrics.total_return(benchmark),
             "sharpe_ratio": metrics.sharpe_ratio(equity),
             "max_drawdown": metrics.max_drawdown(equity),
             "win_rate": (acc["wins"] / acc["trips"]) if acc["trips"] else 0.0,

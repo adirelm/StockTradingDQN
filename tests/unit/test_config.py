@@ -72,6 +72,25 @@ class TestLoaderBehaviour:
             load_config(str(tmp_path / "nope.yaml"))
 
 
+class TestPackagedConfigFallback:
+    """§14 — an installed wheel (no source checkout) loads the bundled config.yaml."""
+
+    def test_loads_packaged_config_when_checkout_missing(self, monkeypatch):
+        import importlib.resources
+
+        from tradedqn import config as cfgmod
+
+        shipped_dir = cfgmod._PROJECT_ROOT / "config"  # holds the real config.yaml
+        monkeypatch.setattr(importlib.resources, "files", lambda package: shipped_dir)
+        # '<root>/config.yaml' does not exist → the §14 importlib.resources fallback fires
+        assert load_config("config.yaml").seed == 42
+
+    def test_named_config_with_no_package_resource_raises(self):
+        # name matches but neither the checkout root nor the package ships it → clear error
+        with pytest.raises(FileNotFoundError, match="run TradeDQN from the project"):
+            load_config("config.yaml")
+
+
 class TestAssertInProject:
     def test_absolute_path_passes_through(self, tmp_path):
         p = str(tmp_path / "x.pt")

@@ -59,6 +59,12 @@ class TestStep:
         _, _, _, info = env.step(1)
         assert info["cost"] == 0.0 and info["slippage"] == 0.0
 
+    def test_info_exposes_today_and_next_day_price(self, env):
+        env.reset()  # t = WINDOW-1 = 2
+        _, _, _, info = env.step(1)
+        assert info["price_now"] == 12.0   # execution price at decision day t
+        assert info["price"] == 13.0       # mark-to-market price at t+1
+
     def test_episode_terminates_at_end(self, env):
         env.reset()
         done = False

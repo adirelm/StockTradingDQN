@@ -73,7 +73,8 @@ class TradingEnvironment:
         info = {
             "value": self.portfolio.value(price_next),
             "action": self._actions[action],
-            "price": float(price_next),
+            "price_now": float(price_now),   # execution price at decision day t
+            "price": float(price_next),      # mark-to-market price at t+1
             "traded": trade["traded"],
             **components,
         }

@@ -7,6 +7,7 @@ through dicts (and so nothing is hardcoded in source).
 
 from __future__ import annotations
 
+import importlib.resources
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -75,20 +76,36 @@ def load_config(path: str | None = None) -> Config:
     of the current working directory. Raises ``ValueError`` if the YAML root is
     not a mapping (a list or scalar config is always a mistake here).
     """
-    config_path = resolve_path(path or DEFAULT_CONFIG_PATH)
-    if not config_path.exists():
-        raise FileNotFoundError(
-            f"config not found at {config_path} — run TradeDQN from the project "
-            "checkout (config/config.yaml lives at the repo root) or pass an explicit path"
-        )
-    with open(config_path, encoding="utf-8") as handle:
-        data = yaml.safe_load(handle)
+    requested = path or DEFAULT_CONFIG_PATH
+    config_path = resolve_path(requested)
+    if config_path.exists():  # source checkout (the normal `uv run` path)
+        text = config_path.read_text(encoding="utf-8")
+    else:  # §14 — installed wheel: fall back to the packaged config
+        text = _packaged_config_text(requested, config_path)
+    data = yaml.safe_load(text)
     if not isinstance(data, dict):
         raise ValueError(
             f"config root must be a mapping, got {type(data).__name__} from {config_path}"
         )
     _check_version(data, config_path)
     return Config(data)
+
+
+def _packaged_config_text(requested: str, checkout_path: Path) -> str:
+    """§14 — read ``config.yaml`` shipped inside the installed ``tradedqn`` wheel.
+
+    When the source checkout has no config file (the project was pip-installed,
+    not run from the repo), load the copy bundled in the package; otherwise raise
+    a clear, actionable error.
+    """
+    if Path(requested).name == DEFAULT_CONFIG_PATH.split("/")[-1]:
+        resource = importlib.resources.files("tradedqn") / "config.yaml"
+        if resource.is_file():
+            return resource.read_text(encoding="utf-8")
+    raise FileNotFoundError(
+        f"config not found at {checkout_path} — run TradeDQN from the project "
+        "checkout (config/config.yaml lives at the repo root) or pass an explicit path"
+    )
 
 
 def _check_version(data: dict[str, Any], config_path: Path) -> None:

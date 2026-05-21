@@ -67,7 +67,7 @@ network:                       # Dueling Conv1D DQN  (Q = V(s) + A(s,a) − mean
 training:
   gamma: 0.95                  # discount factor (γ)
   learning_rate: 0.001
-  episodes: 300
+  episodes: 120                # headline training budget (ε hits its floor by ~ep 58)
   epsilon_start: 1.0           # ε-greedy schedule
   epsilon_min: 0.05
   epsilon_decay: 0.95          # per-episode; reaches the 0.05 floor by ~ep 58

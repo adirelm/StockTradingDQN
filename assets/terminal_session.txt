@@ -17,7 +17,7 @@ Select: Prepared splits: {'train': 515, 'validation': 110, 'test': 112}
   5. Save brain
   6. Load brain
   0. Quit
-Select: Trained 12 episode(s); ε=0.540  final value=23315.42
+Select: Trained 120 episode(s); ε=0.050  final value=244098.82
 
 === TradeDQN ===
   1. Prepare data
@@ -27,7 +27,7 @@ Select: Trained 12 episode(s); ε=0.540  final value=23315.42
   5. Save brain
   6. Load brain
   0. Quit
-Select: Backtest: total_return=-23.74%  benchmark=-15.78%  Sharpe=-3.34  max_drawdown=28.49%  win_rate=11.11%  trades=18
+Select: Backtest: total_return=-28.84%  benchmark=-16.47%  Sharpe=-3.55  max_drawdown=32.02%  win_rate=14.29%  trades=14
 
 === TradeDQN ===
   1. Prepare data
@@ -37,7 +37,7 @@ Select: Backtest: total_return=-23.74%  benchmark=-15.78%  Sharpe=-3.34  max_dra
   5. Save brain
   6. Load brain
   0. Quit
-Select: Recommended action: SELL  (Q = [0.588, 0.502, 0.506])
+Select: Recommended action: BUY  (Q = [12.193, 12.138, 12.526])
 
 === TradeDQN ===
   1. Prepare data
