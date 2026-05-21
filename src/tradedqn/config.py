@@ -50,6 +50,21 @@ def resolve_path(path: str) -> Path:
     return candidate if candidate.is_absolute() else _PROJECT_ROOT / candidate
 
 
+def assert_in_project(path: str) -> str:
+    """§13 path-traversal guard: a *relative* path must resolve inside the project.
+
+    Absolute paths pass through (so tmp dirs in tests work); relative paths that
+    escape the project root (e.g. ``../../etc/x``) are refused.
+    """
+    candidate = Path(path)
+    if candidate.is_absolute():
+        return str(candidate)
+    resolved = (_PROJECT_ROOT / candidate).resolve()
+    if _PROJECT_ROOT not in resolved.parents and resolved != _PROJECT_ROOT:
+        raise ValueError(f"relative path {path!r} resolves outside the project root")
+    return str(resolved)
+
+
 def load_config(path: str | None = None) -> Config:
     """Load a YAML config file into a :class:`Config`.
 

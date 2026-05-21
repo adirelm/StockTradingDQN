@@ -2,7 +2,7 @@
 
 import pytest
 
-from tradedqn.config import Config, load_config
+from tradedqn.config import Config, assert_in_project, load_config
 
 CONFIG_PATH = "config/config.yaml"
 
@@ -50,3 +50,16 @@ class TestLoaderBehaviour:
         bad.write_text("- just\n- a\n- list\n", encoding="utf-8")
         with pytest.raises(ValueError, match="must be a mapping"):
             load_config(str(bad))
+
+
+class TestAssertInProject:
+    def test_absolute_path_passes_through(self, tmp_path):
+        p = str(tmp_path / "x.pt")
+        assert assert_in_project(p) == p
+
+    def test_relative_inside_project_resolves(self):
+        assert assert_in_project("results/x.pt").endswith("results/x.pt")
+
+    def test_relative_escape_refused(self):
+        with pytest.raises(ValueError, match="outside the project root"):
+            assert_in_project("../../../etc/evil")
