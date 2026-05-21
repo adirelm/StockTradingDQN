@@ -23,6 +23,14 @@ def assemble_state(market_window: np.ndarray, position: float, cash_exposure: fl
 
 
 class TradingEnvironment:
+    """Gym-style trading environment (§16 building block).
+
+    Input:  ``reset()`` (none) and ``step(action)`` with action ∈ {0,1,2}.
+    Output: ``reset → state (window×10)``; ``step → (state, reward, done, info)``.
+    Setup:  normalized ``features`` (T×8), aligned raw ``prices`` (T,), and ``cfg``
+            (window size, capital, costs, reward λ, action encoding).
+    """
+
     def __init__(self, features: pd.DataFrame, prices, cfg) -> None:
         self._features = features.to_numpy(dtype=np.float32)
         self._prices = np.asarray(prices, dtype=np.float64)

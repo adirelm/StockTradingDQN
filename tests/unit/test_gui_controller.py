@@ -21,7 +21,7 @@ class FakeSDK:
 
     def backtest(self, split="test"):
         return {"total_return": 0.12, "benchmark_return": 0.08, "sharpe_ratio": 1.3,
-                "max_drawdown": 0.05, "num_trades": 4,
+                "max_drawdown": 0.05, "win_rate": 0.6, "num_trades": 4,
                 "equity_curve": [1000, 1100], "benchmark_curve": [1000, 1080]}
 
     def recommend(self, split="test"):

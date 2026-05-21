@@ -308,6 +308,23 @@ DQN *system* with an analysable result — not a profitable trader. **Past ≠
 future.**
 <!-- CONCLUSIONS:END -->
 
+## Research notebook & sensitivity analysis (§9)
+
+The full research write-up is the Jupyter notebook
+[`notebooks/analysis.ipynb`](notebooks/analysis.ipynb): the RL formulation with the
+governing equations (Bellman target, Dueling aggregation, reward, Sharpe — in
+LaTeX), the held-out backtest with **falsifiable hypotheses** (H1: DQN return >
+Buy & Hold; H2: Sharpe > 0) and their verdicts, the **one-at-a-time sensitivity
+sweep** over `learning_rate` and `gamma` on the **validation** split (never the
+test set), the overfitting analysis, and academic citations.
+
+```bash
+uv run python scripts/parameter_sweep.py --episodes 15        # → results/analysis/sweep.{json,png}
+uv run --with jupyter jupyter lab notebooks/analysis.ipynb   # open the analysis (jupyter on demand)
+```
+
+![Validation Sharpe sensitivity (OAT sweep)](results/analysis/sweep.png)
+
 ## Cost of AI-assisted development
 
 Runtime cost is negligible (a tiny Conv1D net, sub-ms inference); the real cost

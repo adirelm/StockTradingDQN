@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from tradedqn.format import backtest_line, recommendation_line
+
 MENU = (
     ("1", "Prepare data"),
     ("2", "Train"),
@@ -66,18 +68,10 @@ class TerminalApp:
         )
 
     def _backtest(self) -> None:
-        r = self.sdk.backtest()
-        self._output(
-            f"Backtest: total_return={r['total_return']:.2%}  "
-            f"benchmark={r['benchmark_return']:.2%}  Sharpe={r['sharpe_ratio']:.2f}  "
-            f"max_drawdown={r['max_drawdown']:.2%}  win_rate={r['win_rate']:.2%}  "
-            f"trades={r['num_trades']}"
-        )
+        self._output(f"Backtest: {backtest_line(self.sdk.backtest())}")
 
     def _recommend(self) -> None:
-        rec = self.sdk.recommend()
-        q = ", ".join(f"{v:.3f}" for v in rec["q_values"])
-        self._output(f"Recommended action: {rec['action'].upper()}  (Q = [{q}])")
+        self._output(recommendation_line(self.sdk.recommend()))
 
     def _save(self) -> None:
         path = self.sdk.cfg.paths.checkpoint

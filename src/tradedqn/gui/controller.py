@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from matplotlib.figure import Figure
 
+from tradedqn.format import backtest_line, recommendation_line
 from tradedqn.gui.charts import equity_figure, training_figure
 
 
@@ -28,14 +29,9 @@ class GuiController:
     def backtest(self) -> tuple[str, Figure]:
         result = self.sdk.backtest()
         self.last_backtest = result
-        status = (
-            f"Return {result['total_return']:.2%} vs Buy&Hold "
-            f"{result['benchmark_return']:.2%}  ·  Sharpe {result['sharpe_ratio']:.2f}  ·  "
-            f"max DD {result['max_drawdown']:.2%}  ·  trades {result['num_trades']}"
+        return f"Backtest — {backtest_line(result)}", equity_figure(
+            result["equity_curve"], result["benchmark_curve"]
         )
-        return status, equity_figure(result["equity_curve"], result["benchmark_curve"])
 
     def recommend(self) -> str:
-        rec = self.sdk.recommend()
-        q = ", ".join(f"{v:.3f}" for v in rec["q_values"])
-        return f"Recommended action: {rec['action'].upper()}  (Q = [{q}])"
+        return recommendation_line(self.sdk.recommend())

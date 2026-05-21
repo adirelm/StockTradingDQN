@@ -22,7 +22,13 @@ class RateLimitError(RuntimeError):
 
 
 class RateLimitGatekeeper:
-    """Sliding-window + minimum-interval rate limiter."""
+    """Sliding-window + minimum-interval rate limiter (§16 building block).
+
+    Input:  a callable API call (via ``execute``) or a permit request (``acquire``).
+    Output: the call's result (retried on failure) / the seconds waited.
+    Setup:  ``min_interval_seconds``, ``max_calls_per_window``, ``window_seconds``,
+            ``max_retries`` (from config); injectable ``clock``/``sleep`` for tests.
+    """
 
     def __init__(
         self,
