@@ -49,7 +49,7 @@ deterministic seeds; cross-platform (CPU/MPS), `uv`-locked install.
 - `uv run main.py` (terminal) and `uv run main.py gui` both run through the SDK.
 - `uv run python scripts/generate_results.py` reproduces the README's real
   backtest (equity curve vs Buy & Hold + metrics).
-- Every requirement in `instructions/assignment-2/REQUIREMENTS.md` has evidence.
+- Every requirement has an evidence pointer (a file path, a test name, or a screenshot).
 - **Honesty KPI:** the held-out result is reported as-is (the agent currently
   *underperforms* Buy & Hold — see README Conclusions).
 

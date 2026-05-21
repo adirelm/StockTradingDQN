@@ -2,7 +2,7 @@
 
 Task tracker (§2.2). **Definition of Done (DoD)** for every build task: behaviour
 implemented + a test asserting it + gates green (ruff, ≤150 lines, coverage ≥85%)
-+ evidence recorded in `instructions/assignment-2/REQUIREMENTS.md` + committed.
++ an evidence pointer (file / test / screenshot) recorded + committed.
 
 ## Build phases — all ✅ done (one PRD + commit each)
 | # | Phase | Status | Evidence |
@@ -21,8 +21,8 @@ implemented + a test asserting it + gates green (ruff, ≤150 lines, coverage �
 Status snapshot: **130 tests / 100% coverage**, ruff clean, ≤150 code lines/file,
 secret-scan clean, wheel imports from a clean build.
 
-## Pre-submission review remediation (Phase-02 audit findings)
-Tracked in detail in `instructions/assignment-2/submission_guidelines_audit.md`.
+## Pre-submission review remediation (guideline-audit findings)
+(Detailed findings live in the local review notes, kept outside the submission.)
 | Item | Status |
 |---|---|
 | **Blocker** — `.gitignore env/` excluded `src/tradedqn/env/` | ✅ fixed |

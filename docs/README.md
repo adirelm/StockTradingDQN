@@ -4,7 +4,7 @@ This folder holds the **layered PRDs**, plans, TODO lists, and the prompt log â€
 the documentation trail the lecturer grades (he asked explicitly to see work in
 *layers*, not one PRD).
 
-Build order (see `instructions/assignment-2/WORKING_METHODOLOGY.md`):
+Build order (one PRD + one TDD commit per phase):
 
 | Phase | PRD | Delivers |
 |------|-----|----------|

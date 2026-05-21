@@ -68,7 +68,8 @@ These were **human-decided** and recorded, because they change behaviour:
 
 ## Pre-submission review
 
-Before submission we run the multi-pass review methodology in
-`instructions/review_methodology/` (gitignored): walk every requirement in
-`instructions/assignment-2/REQUIREMENTS.md`, one at a time, with evidence —
-the instrument that stops a requirement from being missed.
+Before submission we run a multi-pass, one-section-per-step review against the
+course guidelines: walk every requirement, one at a time, and only check it off
+with concrete evidence (a file path, a test, a screenshot). The review notes and
+the requirement register are kept as **local working files** (not part of the
+submission) — the instrument that stops a requirement from being missed.

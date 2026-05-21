@@ -14,13 +14,17 @@ quality gates, and review methodology proven on Assignment 1 (DroneRL).
 This is a teaching tool, **not investment advice**. No claim of profitability
 is made or implied.
 
-> **Source of truth for requirements.** Two places, both authoritative:
+> **Source of truth for requirements.** Two places, both authoritative — and
+> both kept under `instructions/` which is **gitignored (local working files,
+> not part of the submission)**:
 > 1. `instructions/shared/software_submission_guidelines-V3.pdf` — the
 >    course booklet (§1–§20). Generic, applies to every assignment.
 > 2. `instructions/assignment-2/` — this assignment's spec, derived from the
->    lecture transcripts (`transcripts/`) into `lecturer_spec.md`, and tracked
->    item-by-item in `REQUIREMENTS.md`.
+>    lecture transcripts into `lecturer_spec.md`, and tracked item-by-item in
+>    `REQUIREMENTS.md`.
 > When in doubt, the booklet + the lecturer's words win over anything here.
+> (These paths exist only in the developer's working tree; a clone of the
+> submitted repo will not contain `instructions/`.)
 
 ## How We Work (non-negotiable process)
 
