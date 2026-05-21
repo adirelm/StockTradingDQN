@@ -70,3 +70,34 @@ class TestWindowCap:
         gk.acquire()
         clk.now = 11.0  # both prior calls are now outside the window
         assert gk.acquire() == 0.0
+
+
+class TestExecute:
+    def test_runs_call_through_throttle_and_returns(self):
+        clk = FakeClock()
+        gk = make(clk, min_interval_seconds=0.0, max_retries=3)
+        assert gk.execute(lambda x: x * 2, 21) == 42
+
+    def test_retries_transient_failure_then_succeeds(self):
+        clk = FakeClock()
+        gk = make(clk, min_interval_seconds=0.0, max_retries=3)
+        calls = {"n": 0}
+
+        def flaky():
+            calls["n"] += 1
+            if calls["n"] < 2:
+                raise ConnectionError("transient")
+            return "ok"
+
+        assert gk.execute(flaky) == "ok"
+        assert calls["n"] == 2
+
+    def test_raises_after_max_retries(self):
+        clk = FakeClock()
+        gk = make(clk, min_interval_seconds=0.0, max_retries=2)
+
+        def always_fails():
+            raise ConnectionError("down")
+
+        with pytest.raises(RuntimeError, match="failed after 2 attempts"):
+            gk.execute(always_fails)

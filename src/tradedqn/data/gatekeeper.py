@@ -9,9 +9,12 @@ no real waiting.
 
 from __future__ import annotations
 
+import logging
 import time
 from collections import deque
 from collections.abc import Callable
+
+logger = logging.getLogger("tradedqn.gatekeeper")
 
 
 class RateLimitError(RuntimeError):
@@ -26,12 +29,14 @@ class RateLimitGatekeeper:
         min_interval_seconds: float = 2.0,
         max_calls_per_window: int = 5,
         window_seconds: float = 60.0,
+        max_retries: int = 3,
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         self.min_interval = float(min_interval_seconds)
         self.max_calls = int(max_calls_per_window)
         self.window = float(window_seconds)
+        self.max_retries = int(max_retries)
         self._clock = clock
         self._sleep = sleep
         self._calls: deque[float] = deque()
@@ -78,3 +83,26 @@ class RateLimitGatekeeper:
         self._calls.append(now)
         self._last_call = now
         return waited_a + waited_b
+
+    def execute(self, api_call: Callable[..., object], *args, **kwargs) -> object:
+        """Throttle, run ``api_call``, retry transient failures, and log every attempt.
+
+        All external calls should go through here (§5): the gatekeeper enforces
+        the rate limit *before* each attempt, retries up to ``max_retries`` on
+        failure, and logs each attempt for monitoring. Overflow is handled by
+        ``acquire`` blocking until a slot frees — a serialized FIFO for this
+        single-threaded client (see the §15 concurrency note), not a dropped call.
+        """
+        last_error: Exception | None = None
+        for attempt in range(1, self.max_retries + 1):
+            waited = self.acquire()
+            logger.info("api call attempt %d/%d (throttled %.2fs)", attempt, self.max_retries, waited)
+            try:
+                result = api_call(*args, **kwargs)
+            except Exception as error:  # transient (network/HTTP) — retry within the limit
+                last_error = error
+                logger.warning("api call attempt %d failed: %s", attempt, error)
+                continue
+            logger.info("api call succeeded on attempt %d", attempt)
+            return result
+        raise RuntimeError(f"api call failed after {self.max_retries} attempts") from last_error

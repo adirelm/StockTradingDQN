@@ -66,6 +66,10 @@ class TestLoaderBehaviour:
         with pytest.raises(ValueError, match="incompatible"):
             load_config(str(f))
 
+    def test_missing_config_file_has_clear_error(self, tmp_path):
+        with pytest.raises(FileNotFoundError, match="run TradeDQN from the project"):
+            load_config(str(tmp_path / "nope.yaml"))
+
 
 class TestAssertInProject:
     def test_absolute_path_passes_through(self, tmp_path):

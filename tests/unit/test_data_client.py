@@ -8,11 +8,11 @@ from tradedqn.data.client import OHLCV_COLUMNS, DataClient
 
 class SpyGatekeeper:
     def __init__(self):
-        self.acquired = 0
+        self.executed = 0
 
-    def acquire(self, wait: bool = True) -> float:
-        self.acquired += 1
-        return 0.0
+    def execute(self, api_call, *args, **kwargs):
+        self.executed += 1
+        return api_call(*args, **kwargs)
 
 
 def make_frame(rows: int = 5) -> pd.DataFrame:
@@ -43,7 +43,7 @@ class TestCacheFirst:
         client, fetcher, gk = client_parts
         out = client.get_ohlcv("AAPL", "2020-01-01", "2020-01-06")
         assert fetcher.calls == 1
-        assert gk.acquired == 1
+        assert gk.executed == 1
         assert list(out.columns) == OHLCV_COLUMNS
         assert (tmp_path / "AAPL_2020-01-01_2020-01-06_1d.csv").exists()
 

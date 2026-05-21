@@ -54,8 +54,9 @@ class DataClient:
         path = self._cache_path(ticker, start, end, interval)
         if path.exists() and not force_refresh:
             return self._read_cache(path)
-        self.gatekeeper.acquire()
-        frame = self._validate(self._fetch_fn(ticker, start, end, interval))
+        # All external calls go through the §5 gatekeeper (throttle + retry + log).
+        raw = self.gatekeeper.execute(self._fetch_fn, ticker, start, end, interval)
+        frame = self._validate(raw)
         self._write_cache(path, frame)
         return frame
 

@@ -30,7 +30,9 @@ class TradingSDK:
 
     def _gatekeeper(self) -> RateLimitGatekeeper:
         r = self.cfg.data.rate_limit
-        return RateLimitGatekeeper(r.min_interval_seconds, r.max_calls_per_window, r.window_seconds)
+        return RateLimitGatekeeper(
+            r.min_interval_seconds, r.max_calls_per_window, r.window_seconds, r.max_retries
+        )
 
     def prepare_data(self) -> dict[str, int]:
         """Fetch → features → chronological split → normalize (fit on train)."""

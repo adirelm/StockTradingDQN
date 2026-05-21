@@ -119,6 +119,10 @@ cached and every subsequent run is offline and reproducible.
 uv sync --dev
 ```
 
+Run from the project checkout — `uv` installs the package editable, so
+`config/config.yaml` (at the repo root) is found automatically; if it's ever
+missing the loader fails with a clear message.
+
 ## Running
 
 ```bash
