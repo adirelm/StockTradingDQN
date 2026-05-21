@@ -1,0 +1,41 @@
+$ uv run main.py
+
+=== TradeDQN ===
+  1. Prepare data
+  2. Train
+  3. Backtest
+  4. Recommend next action
+  5. Save brain
+  6. Load brain
+  0. Quit
+Prepared splits: {'train': 266, 'validation': 57, 'test': 58}
+
+=== TradeDQN ===
+  1. Prepare data
+  2. Train
+  3. Backtest
+  4. Recommend next action
+  5. Save brain
+  6. Load brain
+  0. Quit
+Backtest: total_return=0.00%  benchmark=-3.02%  Sharpe=0.00  max_drawdown=0.00%  win_rate=0.00%  trades=0
+
+=== TradeDQN ===
+  1. Prepare data
+  2. Train
+  3. Backtest
+  4. Recommend next action
+  5. Save brain
+  6. Load brain
+  0. Quit
+Recommended action: HOLD  (Q = [-0.042, 0.013, -0.036])
+
+=== TradeDQN ===
+  1. Prepare data
+  2. Train
+  3. Backtest
+  4. Recommend next action
+  5. Save brain
+  6. Load brain
+  0. Quit
+Bye.

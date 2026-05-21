@@ -42,6 +42,29 @@ Built with Claude Code over a **10-phase, PRD-first** workflow (see
   docs, with re-reads and gate runs): **single-digit millions of tokens**,
   reduced substantially by prompt caching. Not instrumented precisely — stated
   as an estimate, not a measurement.
+
+### Token-cost breakdown (estimated)
+
+⚠️ **Estimate, not a measurement** — the sessions were not token-instrumented;
+figures are reconstructed from typical Claude Code session sizes and prompt
+caching. Prices are Anthropic list prices (per million tokens, "MTok").
+
+| Model | Role | Input (est.) | Output (est.) | $/MTok (in / out) | Est. cost |
+|---|---|---:|---:|---:|---:|
+| Claude Sonnet | bulk implementation, tests, edits | ~3.0 M | ~0.5 M | $3 / $15 | ~$16.5 |
+| Claude Opus | architecture, reviews, audits | ~1.0 M | ~0.2 M | $15 / $75 | ~$30.0 |
+| **Total** | | **~4.0 M** | **~0.7 M** | — | **~$45** (≈ **$25–70** band) |
+
+With **prompt caching**, repeated context (the file tree, prior turns) bills at
+~10% of the input rate, so the *effective* cost sits at the low end of the band.
+Under a Claude **Max** subscription the marginal cost per session is **$0** within
+rate limits — the table is the *if-billed-pay-as-you-go* equivalent.
+
+**Optimization strategies used:** (1) **prompt caching** of the stable file tree
++ standards; (2) the **≤150-line file cap** bounds how much code enters context
+per turn; (3) **parallel sub-agents** for the §-by-§ audit (each gets a fresh,
+small context instead of one giant one); (4) reading only the needed file ranges,
+not whole files.
 - **The AI-rework tax is real.** AI writes code fast but its first answer takes
   the "obvious shape" and misses non-obvious traps. Concrete examples this
   project paid for in review, not luck: precomputing path-dependent portfolio
@@ -57,3 +80,21 @@ Built with Claude Code over a **10-phase, PRD-first** workflow (see
 **Takeaway:** the runtime cost is negligible; the real cost is the human
 attention spent reading and verifying generated code. The project's structure
 (SDK facade, single-purpose modules, TDD) is an explicit bet to minimise it.
+
+## 3. Budget management (§11.2)
+
+- **Budget envelope (human-decided).** A Claude Max subscription (~$200/mo);
+  the pay-as-you-go equivalent for this project (~$25–70) stays well inside it.
+- **Monitoring.** Claude Code reports per-session token usage; the cadence to
+  watch is *tokens-per-merged-phase* (a phase that balloons signals scope creep
+  or a file that's too big for its context budget — the 150-line cap is the
+  early-warning here).
+- **Overrun alert / threshold.** Rule of thumb: if a single phase exceeds
+  ~1 MTok of *output*, stop and split it — that's the signal the task wasn't
+  decomposed enough (the PRD should have been smaller). For pay-as-you-go, a
+  hard monthly cap with an 80%-of-cap alert is the standard control.
+- **Cost forecast for scale.** Development cost scales with *number of phases /
+  features*, **not** with training scale. Adding a feature ≈ one more PRD-sized
+  phase (~0.3–0.5 MTok). Runtime cost scales separately (more tickers/episodes →
+  more compute, not more tokens) — see §1.
+

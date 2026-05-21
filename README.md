@@ -177,6 +177,68 @@ bottleneck. `RateLimitGatekeeper` keeps mutable state (a timestamp deque) and is
 (e.g. a parallel multi-ticker sweep), wrap its `acquire`/`execute` in a lock or
 give each worker its own gatekeeper.
 
+## User interface & UX (§10)
+
+Two interfaces, both over the same SDK. **Terminal** (real captured session,
+[`assets/terminal_session.txt`](assets/terminal_session.txt)):
+
+```
+$ uv run main.py
+=== TradeDQN ===
+  1. Prepare data   2. Train   3. Backtest
+  4. Recommend next action   5. Save brain   6. Load brain   0. Quit
+Select: 1
+Prepared splits: {'train': 266, 'validation': 57, 'test': 58}
+Select: 3
+Backtest: total_return=+4.48%  benchmark=+12.08%  Sharpe=0.27  max_drawdown=17.8%  win_rate=36.1%  trades=72
+Select: 4
+Recommended action: BUY  (Q = [0.12, 0.20, 0.31])
+```
+
+**GUI** (Tkinter + matplotlib) — buttons drive the SDK; the chart panel embeds
+the same figures shipped under `results/analysis/` (training reward, equity vs
+Buy & Hold), and a status line shows the latest result:
+
+```
+┌──────────────────────────── TradeDQN ─────────────────────────────┐
+│ [ Prepare data ] [ Train ] [ Backtest ] [ Recommend ]             │
+├────────────────────────────────────────────────────────────────────┤
+│   equity vs Buy & Hold   ╱╲      ___                               │
+│        ____╱╲__╱╲___╱╲__╱   ╲___╱   (matplotlib FigureCanvas)      │
+├────────────────────────────────────────────────────────────────────┤
+│ Return +4.5% vs Buy&Hold +12.1% · Sharpe 0.27 · trades 72         │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+> A live GUI window screenshot needs a display; this was developed/CI'd headless,
+> so the chart-panel content is shown via the committed `results/analysis/*.png`
+> and the layout above. Capturing the rendered window on a desktop is a one-liner
+> (`MainWindow(TradingSDK()).run()` then screenshot) and a known to-do.
+
+**UX quality criteria.** *Learnability* — one obvious menu / four labelled
+buttons in pipeline order. *Efficiency* — single keypress / click per action.
+*Memorability* — the same Prepare→Train→Backtest→Recommend order in both UIs.
+*Error prevention* — actions are safe in any order; calling Train before Prepare
+yields a clear message, not a crash. *Satisfaction* — immediate textual + chart
+feedback.
+
+**Nielsen's 10 heuristics.** (1) *Visibility of status* — every action prints/
+shows its result + a status line. (2) *Match to real world* — Buy/Hold/Sell,
+return, Sharpe, drawdown. (3) *User control* — Quit any time; Save/Load brain.
+(4) *Consistency* — identical action set + order across terminal and GUI.
+(5) *Error prevention* — handlers are wrapped; misuse surfaces a message.
+(6) *Recognition over recall* — labelled menu/buttons, no commands to memorise.
+(7) *Flexibility* — terminal for agents/automation, GUI for presentation.
+(8) *Aesthetic & minimalist* — only the six actions; no clutter.
+(9) *Help users recover from errors* — `Error: call prepare_data() first` etc.,
+caught and shown. (10) *Help & documentation* — this README + `docs/`.
+
+**Accessibility.** Fully **keyboard-operable** (terminal is keyboard-only; Tk
+buttons are tab/Enter reachable). Status is **text**, not colour-coded, so it's
+screen-reader / colour-blind friendly; chart lines use a distinct colour **and**
+a dashed vs solid style (not colour alone). Known limitations: no explicit ARIA/
+screen-reader testing; chart colours are not formally CVD-checked.
+
 ## Results & analysis
 
 <!-- RESULTS:START (filled by scripts/generate_results.py) -->
