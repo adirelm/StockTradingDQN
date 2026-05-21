@@ -20,7 +20,10 @@ OHLCV_COLUMNS = ["Open", "High", "Low", "Close", "Volume"]
 def _yf_download(ticker: str, start: str, end: str, interval: str) -> pd.DataFrame:  # pragma: no cover - network
     import yfinance as yf
 
-    return yf.download(ticker, start=start, end=end, interval=interval, progress=False)
+    frame = yf.download(ticker, start=start, end=end, interval=interval, progress=False)
+    if hasattr(frame.columns, "levels"):  # single-ticker MultiIndex (price, ticker) → flatten
+        frame.columns = frame.columns.get_level_values(0)
+    return frame
 
 
 class DataClient:
