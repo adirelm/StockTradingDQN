@@ -36,6 +36,10 @@ ignore = ["E501"]
 
 [tool.coverage.run]
 source = ["src/tradedqn"]
+# gui/app.py is the thin Tkinter window — it cannot open in headless CI, so it
+# is verified visually (screenshot-regression methodology), not by unit tests.
+# All GUI *logic* lives in the tested gui/controller.py + gui/charts.py.
+omit = ["src/tradedqn/gui/app.py"]
 
 [tool.coverage.report]
 fail_under = 85
