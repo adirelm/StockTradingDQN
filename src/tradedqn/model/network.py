@@ -3,7 +3,9 @@
 Maps a 30×10 market+portfolio state to 3 Q-values [Sell, Hold, Buy]. Conv1D
 convolves the *time* axis (features are channels, never convolved across), then
 a Dueling head splits a shared trunk into a scalar state-value V(s) and an
-action-advantage A(s,a), recombined as Q = V + A − mean(A).
+action-advantage A(s,a), recombined as Q = V + A − mean(A). Setting
+``dueling=False`` collapses this to a plain DQN (Q = A) — the ablation used to
+show the dueling head earns its place (§9 research).
 """
 
 from __future__ import annotations
@@ -21,8 +23,10 @@ class DuelingDQN(nn.Module):
         conv_channels: list[int],
         kernel_size: int,
         dense_units: int,
+        dueling: bool = True,
     ) -> None:
         super().__init__()
+        self.dueling = dueling
         padding = kernel_size // 2  # 'same' length → flatten dim is deterministic
         convs: list[nn.Module] = []
         in_channels = n_features
@@ -45,6 +49,7 @@ class DuelingDQN(nn.Module):
             conv_channels=list(cfg.network.conv_channels),
             kernel_size=cfg.network.kernel_size,
             dense_units=cfg.network.dense_units,
+            dueling=bool(getattr(cfg.network, "dueling", True)),
         )
 
     def _trunk(self, x: torch.Tensor) -> torch.Tensor:
@@ -59,4 +64,6 @@ class DuelingDQN(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         value, advantage = self.value_advantage(x)
+        if not self.dueling:  # ablation: plain DQN — the advantage head is the Q head
+            return advantage
         return value + advantage - advantage.mean(dim=1, keepdim=True)

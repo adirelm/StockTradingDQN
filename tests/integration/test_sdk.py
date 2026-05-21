@@ -57,6 +57,28 @@ class TestPipeline:
         rec = prepared.recommend()
         assert rec["action"] in ("sell", "hold", "buy") and len(rec["q_values"]) == 3
 
+    def test_train_forwards_progress_callback(self, prepared):
+        seen: list[int] = []
+        prepared.train(episodes=2, on_episode=lambda record: seen.append(record["episode"]))
+        assert seen == [0, 1]  # SDK relays each episode to the GUI status bar
+
+    def test_compare_trains_both_architectures(self, prepared):
+        histories = prepared.compare(episodes=1)
+        assert set(histories) == {"Dueling DQN", "Plain DQN"}
+        assert len(histories["Plain DQN"]) == 1 and "reward" in histories["Plain DQN"][0]
+
+    def test_prepare_data_accepts_ticker_and_date_overrides(self, tmp_path):
+        seen: dict[str, str] = {}
+
+        def fetch(ticker, start, end, interval):
+            seen.update(ticker=ticker, start=start, end=end)
+            return synthetic_ohlcv()
+
+        client = DataClient(cache_dir=str(tmp_path / "ovr"), fetch_fn=fetch)
+        sdk = TradingSDK(cfg=load_config(CONFIG), data_client=client)
+        sdk.prepare_data(ticker="MSFT", start="2019-01-01", end="2020-01-01")
+        assert seen == {"ticker": "MSFT", "start": "2019-01-01", "end": "2020-01-01"}
+
 
 class TestGuards:
     def test_default_construction_builds_data_client(self):

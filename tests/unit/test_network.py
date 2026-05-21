@@ -60,3 +60,16 @@ class TestDeterminismAndConfig:
         out = net(torch.randn(1, cfg.features.window_size, cfg.features.features_count))
         assert out.shape[1] == len(vars(cfg.actions)) == 3
         assert net.conv[0].in_channels == cfg.features.features_count
+
+
+class TestAblation:
+    def test_plain_mode_returns_advantage_as_q(self):
+        net = DuelingDQN(WINDOW, FEATURES, ACTIONS, [32, 64], 3, 128, dueling=False)
+        x = torch.randn(2, WINDOW, FEATURES)
+        _, advantage = net.value_advantage(x)
+        assert torch.allclose(net(x), advantage, atol=1e-6)  # plain DQN: Q = A, no V+A−mean
+
+    def test_from_config_respects_dueling_flag(self):
+        cfg = load_config("config/config.yaml")
+        cfg.network.dueling = False
+        assert DuelingDQN.from_config(cfg).dueling is False

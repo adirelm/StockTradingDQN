@@ -22,3 +22,8 @@ class TestTrain:
     def test_final_value_is_reported(self, toy_env, dqn_agent):
         history = TrainingService(toy_env, dqn_agent).train(episodes=1)
         assert history[0]["final_value"] > 0.0
+
+    def test_on_episode_callback_fires_per_episode(self, toy_env, dqn_agent):
+        seen: list[dict] = []
+        TrainingService(toy_env, dqn_agent).train(episodes=3, on_episode=seen.append)
+        assert [r["episode"] for r in seen] == [0, 1, 2]  # live progress for the GUI

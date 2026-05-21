@@ -7,7 +7,7 @@ interfaces depend on this object only; they never touch the engine modules.
 
 from __future__ import annotations
 
-from tradedqn.config import DEFAULT_CONFIG_PATH, assert_in_project, load_config
+from tradedqn.config import DEFAULT_CONFIG_PATH, Config, assert_in_project, load_config
 from tradedqn.data.client import DataClient
 from tradedqn.data.gatekeeper import RateLimitGatekeeper
 from tradedqn.env.trading_env import TradingEnvironment, assemble_state
@@ -34,10 +34,16 @@ class TradingSDK:
             r.min_interval_seconds, r.max_calls_per_window, r.window_seconds, r.max_retries
         )
 
-    def prepare_data(self) -> dict[str, int]:
-        """Fetch → features → chronological split → normalize (fit on train)."""
+    def prepare_data(self, ticker=None, start=None, end=None) -> dict[str, int]:
+        """Fetch → features → chronological split → normalize (fit on train).
+
+        ``ticker``/``start``/``end`` override the config defaults so a UI can let
+        the user choose the symbol and date range; ``None`` keeps the config value.
+        """
         d = self.cfg.data
-        ohlcv = self.data_client.get_ohlcv(d.ticker, d.start, d.end, d.interval)
+        ohlcv = self.data_client.get_ohlcv(
+            ticker or d.ticker, start or d.start, end or d.end, d.interval
+        )
         features = self.preprocessor.compute(ohlcv)
         prices = ohlcv.loc[features.index, "Close"]
         s = self.cfg.split
@@ -57,14 +63,34 @@ class TradingSDK:
         features, prices = self._splits[split]
         return TradingEnvironment(features, prices.to_numpy(), self.cfg)
 
-    def train(self, episodes: int | None = None) -> list[dict]:
+    def train(self, episodes: int | None = None, on_episode=None) -> list[dict]:
         self._require_data()
         episodes = episodes if episodes is not None else self.cfg.training.episodes
-        return TrainingService(self._env("train"), self.agent).train(episodes)
+        return TrainingService(self._env("train"), self.agent).train(episodes, on_episode=on_episode)
 
     def backtest(self, split: str = "test") -> dict:
         self._require_data()
         return BacktestService(self._env(split), self.agent).run()
+
+    def _cfg_with_dueling(self, dueling: bool) -> Config:
+        data = self.cfg.to_dict()
+        data["network"]["dueling"] = dueling
+        return Config(data)
+
+    def compare(self, episodes: int | None = None, on_episode=None) -> dict[str, list]:
+        """Train a Dueling and a plain DQN on the same data → per-arch histories.
+
+        The §9 ablation: same trunk, only the dueling head differs. ``on_episode``
+        (optional) fires as ``(arch_name, record)`` so a UI can show live progress.
+        """
+        self._require_data()
+        episodes = episodes if episodes is not None else self.cfg.training.episodes
+        histories: dict[str, list] = {}
+        for name, dueling in (("Dueling DQN", True), ("Plain DQN", False)):
+            agent = DQNAgent(self._cfg_with_dueling(dueling))
+            relay = (lambda record, n=name: on_episode(n, record)) if on_episode else None
+            histories[name] = TrainingService(self._env("train"), agent).train(episodes, on_episode=relay)
+        return histories
 
     def recommend(self, split: str = "test") -> dict:
         """Recommend an action for the latest window, assuming a flat portfolio."""

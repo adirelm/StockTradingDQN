@@ -53,3 +53,11 @@ class TestBacktest:
         assert result["num_trades"] == 2          # one buy + one sell
         assert result["win_rate"] == 1.0          # sold higher than bought
         assert result["total_return"] > 0.0
+
+    def test_exposes_price_curve_and_trade_markers(self, toy_env):
+        agent = ScriptedAgent([2, 1, 1, 1, 1, 0])  # buy, holds, sell
+        result = BacktestService(toy_env, agent).run()
+        assert len(result["price_curve"]) == len(result["equity_curve"]) - 1
+        sides = [m["action"] for m in result["trade_markers"]]
+        assert sides == ["buy", "sell"]  # markers carry side + step + price for the chart
+        assert {"step", "price", "action"} <= result["trade_markers"][0].keys()

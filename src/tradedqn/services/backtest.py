@@ -14,15 +14,19 @@ from tradedqn.services.rollout import RolloutService
 
 class BacktestService(RolloutService):
     def run(self) -> dict:
-        """Greedy rollout over the env; return curves + metrics."""
+        """Greedy rollout over the env; return curves + trade markers + metrics."""
         initial = self.env.portfolio.initial_capital
-        acc = {"equity": [initial], "prices": [], "trades": 0, "wins": 0, "trips": 0, "entry": None}
+        acc = {"equity": [initial], "prices": [], "markers": [],
+               "trades": 0, "wins": 0, "trips": 0, "entry": None}
 
         def on_step(state, action, reward, next_state, done, info):
             acc["equity"].append(info["value"])
             acc["prices"].append(info["price"])
             if info["traded"] > 0:
                 acc["trades"] += 1
+                acc["markers"].append(
+                    {"step": len(acc["prices"]) - 1, "price": info["price"], "action": info["action"]}
+                )
                 if info["action"] == "buy":
                     acc["entry"] = info["value"]
                 elif info["action"] == "sell" and acc["entry"] is not None:
@@ -31,22 +35,25 @@ class BacktestService(RolloutService):
                     acc["entry"] = None
 
         self._rollout(greedy=True, on_step=on_step)
-        return self._summary(acc["equity"], acc["prices"], acc["trades"], acc["wins"], acc["trips"], initial)
+        return self._summary(acc, initial)
 
     @staticmethod
     def _benchmark(prices, initial: float) -> list[float]:
         base = prices[0]
         return [initial * price / base for price in prices]
 
-    def _summary(self, equity, prices, trades, wins, round_trips, initial) -> dict:
+    def _summary(self, acc, initial) -> dict:
+        equity, prices = acc["equity"], acc["prices"]
         benchmark = self._benchmark(prices, initial) if prices else [initial]
         return {
             "equity_curve": equity,
             "benchmark_curve": [initial, *benchmark],
+            "price_curve": prices,
+            "trade_markers": acc["markers"],
             "total_return": metrics.total_return(equity),
             "benchmark_return": metrics.total_return([initial, *benchmark]),
             "sharpe_ratio": metrics.sharpe_ratio(equity),
             "max_drawdown": metrics.max_drawdown(equity),
-            "win_rate": (wins / round_trips) if round_trips else 0.0,
-            "num_trades": trades,
+            "win_rate": (acc["wins"] / acc["trips"]) if acc["trips"] else 0.0,
+            "num_trades": acc["trades"],
         }

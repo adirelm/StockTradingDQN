@@ -62,6 +62,7 @@ network:                       # Dueling Conv1D DQN  (Q = V(s) + A(s,a) − mean
   conv_channels: [32, 64]      # Conv1D over the TIME axis: 32 → 64 channels
   kernel_size: 3
   dense_units: 128             # shared dense before the value/advantage heads
+  dueling: true                # false → plain DQN (Q = A); the §9 ablation toggle
 
 training:
   gamma: 0.95                  # discount factor (γ)
@@ -86,3 +87,7 @@ paths:
 
 logging:
   level: "INFO"
+
+gui:
+  default_train_episodes: 20     # the Train button's starting episode count (editable in-window;
+                                 # short so the dashboard is playable — dial up for a full run)
