@@ -132,10 +132,10 @@ uv run python scripts/generate_results.py --episodes 40
 ## Results & analysis
 
 <!-- RESULTS:START (filled by scripts/generate_results.py) -->
-**Real run — AAPL, 2014–2024.** Chronological split: train 1,747 days ·
-validation 374 · test 376. Trained **12 episodes** (a fast demo run;
-`config/config.yaml` defaults to 300), then evaluated **greedy** on the held-out
-**test** slice it never trained on.
+**Real run — AAPL, 2014–2024, 120 training episodes.** ε decays to its 0.05
+floor by ~episode 58, so the back half of training exploits the learned policy.
+Chronological split: train 1,747 days · validation 374 · test 376. Evaluated
+**greedy** on the held-out **test** slice it never trained on.
 
 ![Training reward per episode](results/analysis/training_reward.png)
 
@@ -143,15 +143,19 @@ validation 374 · test 376. Trained **12 episodes** (a fast demo run;
 
 | Metric (held-out test, 376 days) | DQN policy | Buy & Hold |
 |---|---:|---:|
-| Total return | **−14.9 %** | **+12.1 %** |
-| Sharpe ratio | −0.58 | — |
-| Max drawdown | 21.7 % | — |
-| Win rate (round-trips) | 35 % | — |
-| Trades | 80 | 1 |
-| Latest recommendation | **SELL** | — |
+| Total return | +4.5 % | **+12.1 %** |
+| Sharpe ratio | +0.27 | — |
+| Max drawdown | 17.8 % | — |
+| Win rate (round-trips) | 36 % | — |
+| Trades | 72 | 1 |
+| Latest recommendation | **BUY** | — |
+
+**In-sample vs out-of-sample.** On the *training* slice the agent learned to
+turn $10 k into **$1–3 million** by the final episodes — yet it returns only
+**+4.5 %** on the held-out test. That gap is the real story (see Conclusions).
 
 Numbers from [`results/analysis/backtest_metrics.json`](results/analysis/backtest_metrics.json);
-reproduce with `uv run python scripts/generate_results.py --episodes 12`.
+reproduce with `uv run python scripts/generate_results.py --episodes 120`.
 <!-- RESULTS:END -->
 
 > **Read the equity curve honestly.** The question is **not** "does the line go
@@ -164,32 +168,34 @@ reproduce with `uv run python scripts/generate_results.py --episodes 12`.
 ## Conclusions
 
 <!-- CONCLUSIONS:START -->
-**The DQN underperformed Buy & Hold out-of-sample — and that is reported, not
-hidden.** On the 376-day held-out test slice the policy returned **−14.9 %**
-while simply buying and holding AAPL returned **+12.1 %**; its Sharpe was
-negative (−0.58) and it made **80 trades** (vs 1 for buy-and-hold), so
-transaction costs + slippage actively eroded it.
+**Training helped — but the headline is a textbook in-sample / out-of-sample
+gap.** Longer training (120 episodes, faster ε-decay) moved the held-out result
+from −14.9 % / Sharpe −0.58 (an earlier 12-episode run) to **+4.5 % / Sharpe
++0.27**, and the recommendation flipped to BUY. Real improvement — but two
+things remain true, and are reported, not hidden:
 
-Why — and what it teaches:
+- **It still loses to Buy & Hold** out-of-sample (+4.5 % vs +12.1 %).
+- **It massively overfits.** On the *training* period the policy compounded
+  $10 k into **$1–3 million** by the final episodes; on the unseen test period it
+  barely moved (+4.5 %). The training-reward curve climbs steeply while test
+  performance lags — the agent memorised profitable sequences specific to the
+  early years that don't generalise to the most recent ones. This is exactly the
+  **overfitting** failure mode from the lecture (learn the manifold; don't
+  memorise isolated points), made concrete.
 
-- **Undertrained.** 12 episodes is a fast demo run (the config default is 300).
-  The per-episode training reward never settled — it swung from +0.19 to +10.4
-  and back to −0.97 (see the training chart) — and ε had only decayed to ~0.94,
-  so the policy had barely begun to *exploit* what it learned. This is learning
-  instability, not a converged result.
-- **Reward shaping ≠ P&L.** Episode 1 had a *positive* shaped reward yet ended
-  ~30 % down in portfolio value. The per-step + λ·Sharpe reward can be positive
-  while the round-trip P&L is negative — a concrete reminder that the reward you
-  optimise is not the metric you ultimately care about.
-- **Markets are hard, and that's the point.** Beating Buy & Hold out-of-sample
-  is genuinely difficult; the goal of this assignment is a *correct, honest* DQN
-  system, not a profitable one. **Past ≠ future.**
+Why, and what I'd do differently:
 
-**What I'd do differently:** train to the configured 300 episodes (or until the
-reward curve flattens); decay ε faster so the backtested policy is actually
-exploitative; penalise trade frequency harder to cut the 80-trade churn; and run
-a small hyperparameter sweep (γ, learning rate, λ) on the **validation** split
-before touching test.
+- **Regularise against overfitting:** dropout / weight decay, a smaller network,
+  **early-stopping on the validation Sharpe** (not on training reward), and
+  training across **multiple tickers** so the policy can't memorise one symbol.
+- **Cut the churn:** 72 trades drag returns through costs/slippage — penalise
+  trade frequency harder in the reward.
+- **Sweep hyperparameters** (γ, learning rate, λ, network size) on the
+  **validation** split before ever touching test.
+
+**Markets are hard, and that's the point.** The deliverable is a correct, honest
+DQN *system* with an analysable result — not a profitable trader. **Past ≠
+future.**
 <!-- CONCLUSIONS:END -->
 
 ## Cost of AI-assisted development

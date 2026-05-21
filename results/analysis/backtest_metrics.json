@@ -1,17 +1,17 @@
 {
-  "total_return": -0.14945219762059347,
+  "total_return": 0.0448669743536525,
   "benchmark_return": 0.12077276459354036,
-  "sharpe_ratio": -0.5797451114002472,
-  "max_drawdown": 0.2173818762924792,
-  "win_rate": 0.35,
-  "num_trades": 80,
+  "sharpe_ratio": 0.27257343547092655,
+  "max_drawdown": 0.17794224823981214,
+  "win_rate": 0.3611111111111111,
+  "num_trades": 72,
   "ticker": "AAPL",
   "period": "2014-01-01..2024-01-01",
-  "episodes": 12,
+  "episodes": 120,
   "splits": {
     "train": 1747,
     "validation": 374,
     "test": 376
   },
-  "recommendation": "sell"
+  "recommendation": "buy"
 }
