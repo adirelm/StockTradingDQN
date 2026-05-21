@@ -6,8 +6,7 @@ Covers `REQUIREMENTS.md` **B22** (and feeds the README block diagrams B24/B25).
 ## Goal
 A desktop dashboard over the **same SDK** the terminal uses: buttons for
 Prepare / Train / Backtest / Recommend, an embedded chart (equity vs Buy&Hold,
-or the training-reward curve), and a status line — "looks like a million
-dollars" on top of the already-working terminal app.
+or the training-reward curve), and a status line — polished and presentation-ready on top of the already-working terminal app.
 
 ## Decision (ADR)
 Tkinter (stdlib) + matplotlib (already a dependency) embedded via

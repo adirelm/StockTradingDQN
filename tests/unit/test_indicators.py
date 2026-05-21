@@ -69,3 +69,15 @@ class TestBandsVolumeVwap:
     def test_volume_norm_zero_for_constant_volume(self):
         vol = pd.Series([500.0] * 8)
         assert ind.volume_norm(vol, 3).dropna().abs().max() == pytest.approx(0.0)
+
+
+class TestZeroDivisorSafety:
+    """Degenerate input (flat price / zero volume) must yield NaN, never a crash."""
+
+    def test_no_crash_on_flat_or_zero_volume(self):
+        flat = pd.Series([100.0] * 30)      # flat price → zero std/range/avg-loss
+        zerovol = pd.Series([0.0] * 30)     # zero volume → zero rolling sum/avg
+        assert ind.rsi(flat, 14).isna().iloc[-1]                      # not a TypeError
+        assert ind.bollinger_pct(flat, 20).isna().iloc[-1]
+        assert ind.vwap_dist(flat, flat, flat, zerovol, 20).isna().iloc[-1]
+        assert ind.volume_norm(zerovol, 20).isna().iloc[-1]

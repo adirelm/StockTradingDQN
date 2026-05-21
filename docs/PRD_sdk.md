@@ -25,7 +25,7 @@ save_brain / load_brain  agent checkpoint, path-guarded (§13) + weights_only (�
   shared `env.assemble_state(...)` helper used by both the env and the SDK's
   inference path.
 - `recommend` builds the latest state assuming a **flat** portfolio
-  (position 0, cash_exposure 1) → "what to do if currently in cash".
+  (position 0, unrealized_pnl 0) → "what to do if currently in cash".
 - Injectable `data_client` / `agent` so tests never hit the network.
 
 ## Public API

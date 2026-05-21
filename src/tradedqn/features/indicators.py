@@ -37,7 +37,7 @@ def rsi(series: pd.Series, period: int) -> pd.Series:
     loss = -delta.clip(upper=0.0)
     avg_gain = gain.rolling(period).mean()
     avg_loss = loss.rolling(period).mean()
-    rs = avg_gain / avg_loss.replace(0.0, pd.NA)
+    rs = avg_gain / avg_loss.replace(0.0, np.nan)
     out = 100.0 - 100.0 / (1.0 + rs)
     out = out.mask((avg_loss == 0.0) & (avg_gain > 0.0), 100.0)
     out = out.mask((avg_gain == 0.0) & (avg_loss > 0.0), 0.0)
@@ -59,7 +59,7 @@ def bollinger_pct(close: pd.Series, window: int, num_std: float = 2.0) -> pd.Ser
     mid = sma(close, window)
     sd = close.rolling(window).std()
     lower = mid - num_std * sd
-    span = (2.0 * num_std * sd).replace(0.0, pd.NA)
+    span = (2.0 * num_std * sd).replace(0.0, np.nan)
     return ((close - lower) / span).astype(float)
 
 
@@ -67,11 +67,11 @@ def vwap_dist(high, low, close, volume, window: int) -> pd.Series:
     """Relative distance of close from the rolling VWAP: ``Close / VWAP − 1``."""
     typical = (high + low + close) / 3.0
     pv = (typical * volume).rolling(window).sum()
-    vol = volume.rolling(window).sum().replace(0.0, pd.NA)
+    vol = volume.rolling(window).sum().replace(0.0, np.nan)
     return (close / (pv / vol) - 1.0).astype(float)
 
 
 def volume_norm(volume: pd.Series, window: int) -> pd.Series:
     """Volume relative to its moving average: ``Volume / SMA(Volume) − 1``."""
-    avg = sma(volume, window).replace(0.0, pd.NA)
+    avg = sma(volume, window).replace(0.0, np.nan)
     return (volume / avg - 1.0).astype(float)

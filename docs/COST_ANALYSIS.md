@@ -17,7 +17,7 @@ The model is deliberately small — a Conv1D Dueling DQN over a 30×10 window.
 | State tensor | 30 × 10 float32 = 1.2 KB | one window |
 | Replay buffer | `replay_capacity` × (2 states + scalars) | 10 000 × ~2.5 KB ≈ 25 MB cap |
 | Device | CPU / Apple MPS | the net is tiny; GPU is not required |
-| Training | one episode ≈ one pass over the train slice (~1.7 k steps for 10 y daily) | see measured run below |
+| Training | one episode ≈ one pass over the train slice (~515 steps for the 2020–2023 train slice) | see measured run below |
 | Inference | one forward pass on a 30×10 window | sub-millisecond on CPU |
 
 **Where it stops being free:** the cost scales with `window_size × features ×
@@ -25,7 +25,7 @@ replay_capacity × episodes`, and with the number of tickers if you train a
 portfolio. A single-ticker daily model trains on a laptop CPU in minutes;
 intraday data (×100 the rows) or many tickers is where a GPU / batched data
 loader starts to matter. Pulling data is the other limit — Yahoo Finance
-rate-limits, which is exactly why the §5 gatekeeper + CSV cache exist (fetch
+rate-limits, which is exactly why the §5 gatekeeper + parquet cache exist (fetch
 once, train offline).
 
 _Measured numbers from the README's real AAPL run are filled in by

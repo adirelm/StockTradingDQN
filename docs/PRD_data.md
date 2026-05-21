@@ -18,10 +18,10 @@ without ever hammering Yahoo Finance.
    max-calls-per-rolling-window cap. Injectable clock/sleep so tests use no real
    time. `acquire(wait=False)` raises `RateLimitError`; `wait=True` blocks.
 3. **DataClient** — `src/tradedqn/data/client.py`: `get_ohlcv(...)` is
-   **cache-first** — returns the local CSV if present; on a miss it calls the
-   live fetcher *through the gatekeeper*, validates OHLCV columns, writes the
-   cache, returns the frame. The fetcher (`yfinance`) is injected so tests never
-   touch the network.
+   **cache-first** — returns the local **parquet** if present; on a miss it calls
+   the live fetcher *through the gatekeeper*, validates OHLCV columns, writes the
+   parquet cache (with a `{ticker}.csv` fallback if a live fetch fails), returns
+   the frame. The fetcher (`yfinance`) is injected so tests never touch the network.
 
 ## Out of scope (later phases)
 Feature engineering / indicators (Phase 2), windowing & the env (Phase 3).
@@ -43,7 +43,7 @@ DataClient(cache_dir, gatekeeper=None, fetch_fn=_yf_download)
   amount; window cap blocks the (N+1)th call; `wait=False` raises
   `RateLimitError`; `acquire` returns total time waited; uses injected clock/sleep
   (no real sleeping in tests).
-- DataClient: cache miss → fetcher called once, CSV written, gatekeeper acquired;
+- DataClient: cache miss → fetcher called once, parquet written, gatekeeper acquired;
   cache hit → fetcher **not** called; empty frame raises; missing OHLCV column
   raises; `force_refresh=True` re-fetches.
 

@@ -99,7 +99,7 @@ If a pattern appears twice, extract a utility or base-class method.
 ### Data (§5 — API Gatekeeper is now load-bearing)
 - Source: **Yahoo Finance** via `yfinance`. OHLCV, ~10 years.
 - **Rate-limit gatekeeper is mandatory**: throttle / cache so we never hammer
-  the API. Persist raw pulls to a local CSV for reproducibility and offline runs.
+  the API. Persist raw pulls to a local parquet cache (+ CSV fallback) for reproducibility and offline runs.
 
 ### Features & State
 - Compute technical indicators (moving averages, volatility, momentum, volume

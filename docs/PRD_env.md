@@ -11,7 +11,7 @@ state into the **30×10** observation, applies **Sell/Hold/Buy**, and returns th
 ## Modules
 - `env/portfolio.py` — `Portfolio`: cash + shares accounting; `buy/sell/hold`
   at a price with transaction-cost + slippage fees; `value(price)`,
-  `position(price)`, `cash_exposure(price)`.
+  `position(price)`, `unrealized_pnl(price)`.
 - `env/reward.py` — `RewardFunction`: composes the deck's reward and exposes the
   components (`delta_v`, `cost`, `slippage`, `sharpe`) in `info` for transparency.
 - `env/trading_env.py` — `TradingEnvironment`: `reset() -> state`,
@@ -24,7 +24,7 @@ Sell = liquidate *all* holdings; Hold = no change. This is the deck's simple
 "have stock or not" model. *Alternative:* fractional sizing (trade in fixed %
 increments) — more realistic, more state, harder to learn at this budget.
 
-**D2 — Portfolio features in the window.** `position` and `cash_exposure` are
+**D2 — Portfolio features in the window.** `position` and `unrealized_pnl` are
 the agent's *current* scalars, **broadcast across all 30 rows** of the window
 (constant channels 9 & 10; channels 1–8 are the per-day market history).
 *Alternative:* store the per-day portfolio *path* over the window
@@ -46,7 +46,7 @@ step's not-yet-known row.
 ## Public API
 ```
 Portfolio(initial_capital, transaction_cost, slippage)
-  .buy(price)/.sell(price)/.hold(); .value(price); .position(price); .cash_exposure(price)
+  .buy(price)/.sell(price)/.hold(); .value(price); .position(price); .unrealized_pnl(price)
 RewardFunction(risk_lambda, sharpe_window).compute(...) -> (reward, components)
 TradingEnvironment(features_df, prices, cfg)
   .reset() -> ndarray(30,10);  .step(action) -> (ndarray(30,10), float, bool, dict)
@@ -54,7 +54,7 @@ TradingEnvironment(features_df, prices, cfg)
 
 ## Acceptance criteria (tests assert)
 - Portfolio: buy spends all cash minus fees; sell liquidates; fees match config;
-  value = cash + shares·price; position+cash_exposure ≈ 1.
+  value = cash + shares·price; unrealized_pnl is 0 when flat, signed when holding.
 - Env: `reset` returns float32 (30,10); channels 9–10 reflect portfolio; `step`
   advances one day, `done` true at the end; **no-look-ahead** test passes;
   buying then price-up yields positive reward; a Hold incurs no cost.

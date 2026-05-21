@@ -8,7 +8,7 @@ Build order (one PRD + one TDD commit per phase):
 
 | Phase | PRD | Delivers |
 |------|-----|----------|
-| 1 | `PRD_data.md` | yfinance fetch + §5 rate-limit gatekeeper + CSV cache |
+| 1 | `PRD_data.md` | yfinance fetch + §5 rate-limit gatekeeper + parquet cache |
 | 2 | `PRD_features.md` | technical indicators + normalisation + train/val/test split |
 | 3 | `PRD_env.md` | Gym-style trading env: 30×10 state, Buy/Hold/Sell, reward |
 | 4 | `PRD_network.md` | Dueling DQN (Conv1D 32→64 → Value + Advantage streams) |

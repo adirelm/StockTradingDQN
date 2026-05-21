@@ -19,7 +19,7 @@ grades this) rather than one bulk dump:
 
 | Phase | PRD | What landed |
 |------|-----|-------------|
-| 1 | PRD_data | `DataClient` + §5 rate-limit gatekeeper + CSV cache |
+| 1 | PRD_data | `DataClient` + §5 rate-limit gatekeeper + parquet cache |
 | 2 | PRD_features | 8 market indicators + normalization (fit-on-train) + chronological split |
 | 3 | PRD_env | `TradingEnvironment` (30×10 state, Buy/Hold/Sell, reward) |
 | 4 | PRD_network | Dueling Conv1D DQN |
@@ -48,7 +48,7 @@ These were **human-decided** and recorded, because they change behaviour:
 ## Where human judgment corrected the AI
 
 - The AI's first instinct was to precompute all 10 state features. The human
-  caught that `position` and `cash_exposure` are **path-dependent** on the
+  caught that `position` and `unrealized_pnl` are **path-dependent** on the
   agent's own trades — precomputing them is meaningless and leaks. They are now
   injected by the env at runtime; only the 8 market features are precomputed.
 - Normalization is **fit on train only** and clips val/test — the AI's naive

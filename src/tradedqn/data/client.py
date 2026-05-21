@@ -1,6 +1,6 @@
 """DataClient — fetch & cache OHLCV market data (cache-first, gatekept).
 
-Returns the local CSV cache when present (offline + reproducible). Only on a
+Returns the local parquet cache when present (offline + reproducible). Only on a
 cache miss does it call the live fetcher, and that call goes through the §5
 gatekeeper. The fetcher is injectable so unit tests never touch the network.
 """

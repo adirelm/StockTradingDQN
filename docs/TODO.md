@@ -18,7 +18,7 @@ implemented + a test asserting it + gates green (ruff, ≤150 lines, coverage �
 | 9 | GUI dashboard | ✅ | `gui/`, tests; Phase 9 |
 | 10 | Docs + real results | ✅ | README, PROMPTS, COST_ANALYSIS, charts; Phase 10 |
 
-Status snapshot: **130 tests / 100% coverage**, ruff clean, ≤150 code lines/file,
+Status snapshot: **163 tests / 100% coverage**, ruff clean, ≤150 code lines/file,
 secret-scan clean, wheel imports from a clean build.
 
 ## Pre-submission review remediation (guideline-audit findings)

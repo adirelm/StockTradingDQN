@@ -29,7 +29,7 @@ profitability. (The agent is *not* expected to beat the market.)
 ## 3. Functional requirements (→ per-phase PRDs)
 | Area | Requirement | PRD |
 |---|---|---|
-| Data | OHLCV from Yahoo, §5 rate-limit gatekeeper, CSV cache | [PRD_data](PRD_data.md) |
+| Data | OHLCV from Yahoo, §5 rate-limit gatekeeper, parquet cache | [PRD_data](PRD_data.md) |
 | Features | 8 market indicators, normalize fit-on-train, chrono split | [PRD_features](PRD_features.md) |
 | Env | 30×10 state, Sell/Hold/Buy, reward `ΔV−C−S+λ·Sharpe` | [PRD_env](PRD_env.md) |
 | Network | Dueling Conv1D DQN (V + A heads) | [PRD_network](PRD_network.md) |
@@ -54,7 +54,7 @@ deterministic seeds; cross-platform (CPU/MPS), `uv`-locked install.
   *underperforms* Buy & Hold — see README Conclusions).
 
 ## 6. Constraints & assumptions
-Single ticker, daily bars, ~10 years; single-threaded (see PLAN §concurrency);
+Single ticker, daily bars, ~3 years (2020-2023); single-threaded (see PLAN §concurrency);
 Yahoo rate limits → cache-first; "past ≠ future" — no profitability claim.
 
 ## 7. Architecture, plan & tasks

@@ -20,8 +20,8 @@ Svc:    TrainingService , BacktestService , InferenceService , metrics
         │
 Model:  DQNAgent → DuelingDQN + ReplayBuffer + (target net)
 Env:    TradingEnvironment → Portfolio + RewardFunction
-Data:   DataClient → RateLimitGatekeeper (§5) + CSV cache ; Preprocessor + split/normalizer
-Infra:  Yahoo Finance (yfinance) , local CSV cache , torch checkpoints
+Data:   DataClient → RateLimitGatekeeper (§5) + parquet cache ; Preprocessor + split/normalizer
+Infra:  Yahoo Finance (yfinance) , local parquet cache , torch checkpoints
 ```
 
 The README contains the rendered **data-flow** and **OOP-layers** mermaid

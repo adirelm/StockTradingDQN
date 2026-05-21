@@ -156,7 +156,7 @@ uv run main.py          # terminal menu: Prepare → Train → Backtest → Reco
 uv run main.py gui      # Tkinter + matplotlib dashboard
 
 # regenerate the results below (fetches Yahoo once, then trains + backtests):
-uv run python scripts/generate_results.py --episodes 40
+uv run python scripts/generate_results.py --episodes 120
 ```
 
 A typical session: **Prepare data** (fetch + cache + features + split) → **Train**
