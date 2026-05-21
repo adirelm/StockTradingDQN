@@ -30,7 +30,7 @@ benchmark — all behind one SDK with both a terminal and a GUI.
   normalized *fit-on-train* (no look-ahead), chronological 70/15/15 split.
 - **Environment** — `TradingEnvironment`: 30×10 state (8 market + 2 portfolio
   channels `position`, `unrealized_pnl`), Sell/Hold/Buy, reward
-  `rₜ = ΔVₜ − Cₜ − Sₜ + γ·Sharpeₜ`.
+  `rₜ = ΔVₜ − Cₜ − Sₜ + λ·Sharpeₜ`.
 - **Model** — Dueling Conv1D DQN, experience replay, target network.
 - **Services** — training loop, backtest (equity vs Buy & Hold + metrics),
   single-step inference.
@@ -352,7 +352,7 @@ Why, and what I'd do differently:
 - **Regularise:** dropout / weight decay, a smaller network, **early-stopping on
   the validation Sharpe** (not on training reward), and training across
   **multiple tickers / regimes** so the policy can't memorise one symbol.
-- **Re-weight risk / cut churn:** the Sharpe-heavy reward (γ=1.0) plus 21 trades
+- **Re-weight risk / cut churn:** the Sharpe-heavy reward (λ=1.0) plus 21 trades
   in a falling market hurt; tune the cost/risk weights on validation.
 - **Sweep hyperparameters** (γ, learning rate, λ, network size) on the
   **validation** split before ever touching test (done — see the §9 sweep).
@@ -368,7 +368,7 @@ The twelve questions the brief requires the README to answer, with pointers to t
 
 1. **What does Q represent (vs predicting tomorrow's price)?** `Q(s,a;θ)` is the expected *discounted cumulative reward* of taking action `a` in state `s` then following the policy — the value of a *decision*, not a price forecast. The net never predicts the next price; it ranks Sell/Hold/Buy by long-run portfolio value ([network.py](src/tradedqn/model/network.py)).
 2. **Why function approximation, not a Q-Table?** The state `sₜ ∈ ℝ^{30×10}` is continuous and high-dimensional — a table would need a cell per distinct window (effectively infinite, never revisited). A Conv1D net generalises across unseen states via a parametric `Q(s,a;θ)`.
-3. **How does the reward shape the policy?** The objective *is* the reward: `rₜ = ΔVₜ − Cₜ − Sₜ + γ·Sharpeₜ` rewards risk-adjusted PnL net of cost, so the agent learns to trade economically rather than maximise turnover ([reward.py](src/tradedqn/env/reward.py)).
+3. **How does the reward shape the policy?** The objective *is* the reward: `rₜ = ΔVₜ − Cₜ − Sₜ + λ·Sharpeₜ` rewards risk-adjusted PnL net of cost, so the agent learns to trade economically rather than maximise turnover ([reward.py](src/tradedqn/env/reward.py)).
 4. **Reward = immediate profit only, no trade-cost penalty?** The agent would over-trade — churning every bar — since costs are invisible to it; real returns then vanish into fees/slippage. Our `Cₜ`/`Sₜ` terms penalise exactly that.
 5. **Why not mix Test into training; what is leakage?** The split is chronological (never shuffled); Test is strictly *after* train/val. Leakage = letting future info (future prices, or normalization stats fit on the whole series) bleed into training, inflating the backtest. We fit the normalizer on **train only** ([dataset.py](src/tradedqn/features/dataset.py)).
 6. **When is Hold optimal?** When the expected move doesn't cover cost + slippage, or the position is already correct — trading would only burn fees. Hold is the no-op that preserves capital.

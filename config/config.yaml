@@ -50,7 +50,7 @@ env:
   initial_capital: 10000.0
   transaction_cost: 0.001      # α — transaction_cost_alpha (§7), charged per Buy/Sell
   slippage: 0.001              # β — slippage_beta (§7), executed-vs-expected fraction
-  risk_lambda: 1.0             # γ — sharpe_bonus_gamma (§7), weight on the Sharpe term
+  risk_lambda: 1.0             # λ — weight on the Sharpe term (deck's "sharpe_bonus_gamma", §7)
   sharpe_window: 20            # rolling window for Sharpe in the reward
 
 actions:                       # discrete action space (exact encoding from deck)
