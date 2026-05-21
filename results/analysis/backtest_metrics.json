@@ -6,18 +6,38 @@
       "action": "buy"
     },
     {
+      "step": 3,
+      "price": 151.63070678710938,
+      "action": "sell"
+    },
+    {
+      "step": 4,
+      "price": 154.4873809814453,
+      "action": "buy"
+    },
+    {
+      "step": 23,
+      "price": 142.76608276367188,
+      "action": "sell"
+    },
+    {
       "step": 24,
       "price": 137.52394104003906,
-      "action": "sell"
+      "action": "buy"
     },
     {
       "step": 25,
       "price": 137.84788513183594,
+      "action": "sell"
+    },
+    {
+      "step": 27,
+      "price": 135.80596923828125,
       "action": "buy"
     },
     {
-      "step": 26,
-      "price": 136.43426513671875,
+      "step": 28,
+      "price": 140.3708038330078,
       "action": "sell"
     },
     {
@@ -26,8 +46,28 @@
       "action": "buy"
     },
     {
+      "step": 31,
+      "price": 141.1168670654297,
+      "action": "sell"
+    },
+    {
+      "step": 32,
+      "price": 141.224853515625,
+      "action": "buy"
+    },
+    {
       "step": 33,
       "price": 140.76345825195312,
+      "action": "sell"
+    },
+    {
+      "step": 35,
+      "price": 146.7124481201172,
+      "action": "buy"
+    },
+    {
+      "step": 39,
+      "price": 152.8872528076172,
       "action": "sell"
     },
     {
@@ -46,18 +86,8 @@
       "action": "buy"
     },
     {
-      "step": 66,
-      "price": 138.58786010742188,
-      "action": "sell"
-    },
-    {
-      "step": 70,
-      "price": 143.04226684570312,
-      "action": "buy"
-    },
-    {
-      "step": 74,
-      "price": 130.16085815429688,
+      "step": 76,
+      "price": 133.18946838378906,
       "action": "sell"
     },
     {
@@ -69,17 +99,22 @@
       "step": 80,
       "price": 123.93653869628906,
       "action": "sell"
+    },
+    {
+      "step": 81,
+      "price": 127.44692993164062,
+      "action": "buy"
     }
   ],
-  "total_return": -0.2883982402588524,
+  "total_return": -0.17487480249414855,
   "benchmark_return": -0.16471637116946491,
-  "sharpe_ratio": -3.5519034006340036,
-  "max_drawdown": 0.32021744638153277,
-  "win_rate": 0.14285714285714285,
-  "num_trades": 14,
+  "sharpe_ratio": -1.6582807095679633,
+  "max_drawdown": 0.19407231679548057,
+  "win_rate": 0.2,
+  "num_trades": 21,
   "ticker": "AAPL",
   "period": "2020-01-01..2023-01-01",
-  "episodes": 120,
+  "episodes": 300,
   "splits": {
     "train": 515,
     "validation": 110,

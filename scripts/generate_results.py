@@ -1,6 +1,6 @@
 """Generate README results: train on the configured ticker, backtest, save artifacts.
 
-    uv run python scripts/generate_results.py --episodes 120
+    uv run python scripts/generate_results.py --episodes 300
 
 Writes to ``results/analysis/``: training_reward.png, backtest_equity.png,
 backtest_metrics.json. Hits Yahoo Finance once (gatekept + cached) on first run.

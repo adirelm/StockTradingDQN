@@ -156,7 +156,7 @@ uv run main.py          # terminal menu: Prepare → Train → Backtest → Reco
 uv run main.py gui      # Tkinter + matplotlib dashboard
 
 # regenerate the results below (fetches Yahoo once, then trains + backtests):
-uv run python scripts/generate_results.py --episodes 120
+uv run python scripts/generate_results.py --episodes 300
 ```
 
 A typical session: **Prepare data** (fetch + cache + features + split) → **Train**
@@ -216,16 +216,16 @@ $ uv run main.py
 Select: 1
 Prepared splits: {'train': 515, 'validation': 110, 'test': 112}
 Select: 2
-Trained 120 episode(s); ε=0.050  final value=244098.82
+Trained 300 episode(s); ε=0.050  final value=344403.66
 Select: 3
-Backtest: total_return=-28.84%  benchmark=-16.47%  Sharpe=-3.55  max_drawdown=32.02%  win_rate=14.29%  trades=14
+Backtest: total_return=-17.49%  benchmark=-16.47%  Sharpe=-1.66  max_drawdown=19.41%  win_rate=20.00%  trades=21
 Select: 4
-Recommended action: BUY  (Q = [12.193, 12.138, 12.526])
+Recommended action: BUY  (Q = [13.882, 13.827, 14.056])
 ```
 
 > Verbatim from a real run captured to [`assets/terminal_session.txt`](assets/terminal_session.txt).
 > Seeded (`config.seed`), so it reproduces the **Results** numbers below exactly — the
-> menu's Train uses the config default of 120 episodes.
+> menu's Train uses the config default of 300 episodes.
 
 **GUI** (Tkinter + matplotlib) — a toolbar drives the SDK with inputs you can
 play with: a **ticker** + **date range** (train on AAPL, MSFT, TSLA…), an
@@ -293,7 +293,7 @@ screen-reader testing; chart colours are not formally CVD-checked.
 ## Results & analysis
 
 <!-- RESULTS:START (filled by scripts/generate_results.py) -->
-**Real run — AAPL, 2020-01-01→2023-01-01 (the binding §4 window), 120 training
+**Real run — AAPL, 2020-01-01→2023-01-01 (the binding §4 window), 300 training
 episodes.** Chronological split: train 515 days · validation 110 · test 112.
 Evaluated **greedy** on the held-out **test** slice it never trained on.
 
@@ -303,19 +303,21 @@ Evaluated **greedy** on the held-out **test** slice it never trained on.
 
 | Metric (held-out test, 112 days) | DQN policy | Buy & Hold |
 |---|---:|---:|
-| Total return | **−28.8 %** | −16.5 % |
-| Sharpe ratio | −3.55 | — |
-| Max drawdown | 32.0 % | — |
-| Win rate (round-trips) | 14.3 % | — |
-| Trades | 14 | 1 |
+| Total return | **−17.5 %** | −16.5 % |
+| Sharpe ratio | −1.66 | — |
+| Max drawdown | 19.4 % | — |
+| Win rate (round-trips) | 20.0 % | — |
+| Trades | 21 | 1 |
 | Latest recommendation | **BUY** | — |
 
-**The test window is AAPL's 2022 drawdown**, so *both* lost money — and the DQN
-lost **more** than simply holding. Training reward rises while the unseen test
-slice underperforms: a clean in-sample/out-of-sample gap (see Conclusions).
+**The test window is AAPL's 2022 drawdown**, so *both* lost money. The DQN ends
+within ~1 point of simply holding (−17.5 % vs −16.5 %) but with a **negative
+Sharpe (−1.66)** — no risk-adjusted edge. Set against that, training compounds
+the $10k stake to **~$344k in-sample**: a stark in-sample/out-of-sample gap that
+is the real finding (see Conclusions).
 
 Numbers from [`results/analysis/backtest_metrics.json`](results/analysis/backtest_metrics.json);
-reproduce with `uv run python scripts/generate_results.py --episodes 120`. The run is
+reproduce with `uv run python scripts/generate_results.py --episodes 300`. The run is
 **seeded** (`config.seed`) — Python/NumPy/Torch RNGs are fixed, so a fresh run on the
 same machine reproduces these numbers exactly (verified across two independent runs).
 <!-- RESULTS:END -->
@@ -330,24 +332,27 @@ same machine reproduces these numbers exactly (verified across two independent r
 ## Conclusions
 
 <!-- CONCLUSIONS:START -->
-**The headline is a clean out-of-sample failure — exactly what the brief asks us
-to surface honestly.** On the held-out 2022 test slice the DQN returns
-**−28.8 % (Sharpe −3.55)** versus Buy & Hold's **−16.5 %**: it not only fails to
-beat the market, it underperforms simply holding. Two things are true and
-reported, not hidden:
+**The headline is an honest "no demonstrable edge" — exactly what the brief asks
+us to surface.** On the held-out 2022 test slice the DQN returns
+**−17.5 % (Sharpe −1.66)** versus Buy & Hold's **−16.5 %**: it lands within a
+point of simply holding on raw return, but **never beats the benchmark and loses
+on a risk-adjusted basis** (negative Sharpe). Two things are true and reported,
+not hidden:
 
-- **It loses to Buy & Hold out-of-sample** (−28.8 % vs −16.5 %).
-- **In-sample ≫ out-of-sample.** Training reward climbs steadily (see the chart)
-  while the unseen test slice underperforms — the agent fits the 2020–2021 bull
-  regime and does not generalise to the 2022 regime shift. Textbook overfitting
-  on a single ticker over a single regime.
+- **No risk-adjusted edge out-of-sample** (−17.5 % vs −16.5 %, Sharpe −1.66) —
+  it roughly matches Buy & Hold on return but took more risk to get there, so
+  holding was strictly the better choice.
+- **In-sample ≫ out-of-sample.** Training compounds the $10k stake to **~$344k**
+  while the unseen test slice only matches Buy & Hold — the agent fits the
+  2020–2021 bull regime and carries no real edge into the 2022 regime shift.
+  Textbook overfitting on a single ticker over a single regime.
 
 Why, and what I'd do differently:
 
 - **Regularise:** dropout / weight decay, a smaller network, **early-stopping on
   the validation Sharpe** (not on training reward), and training across
   **multiple tickers / regimes** so the policy can't memorise one symbol.
-- **Re-weight risk / cut churn:** the Sharpe-heavy reward (γ=1.0) plus 14 trades
+- **Re-weight risk / cut churn:** the Sharpe-heavy reward (γ=1.0) plus 21 trades
   in a falling market hurt; tune the cost/risk weights on validation.
 - **Sweep hyperparameters** (γ, learning rate, λ, network size) on the
   **validation** split before ever touching test (done — see the §9 sweep).
@@ -371,7 +376,7 @@ The twelve questions the brief requires the README to answer, with pointers to t
 8. **Exploration (training) vs evaluation (backtest)?** Training is ε-greedy (random with prob ε to explore); the backtest is **greedy** (`argmax Q`, ε=0) — we evaluate the learned policy, not exploration noise ([agent.py](src/tradedqn/model/agent.py), [backtest.py](src/tradedqn/services/backtest.py)).
 9. **Is Total Return enough?** No — a high return can hide huge risk. We also report **Sharpe** (risk-adjusted), **Max Drawdown** (worst pain), and **Win Rate** (consistency) so a lucky high-variance run can't pass as skill ([metrics.py](src/tradedqn/services/metrics.py)).
 10. **Which env/reward bugs fake a good backtest?** Look-ahead (using `price[t+1]` in the state), normalization fit on the full series, an off-by-one reward (crediting a trade before it executes), or zero transaction cost — all inflate results. Our env executes at `prices[t]` with the next day only as *outcome*, and a test asserts no look-ahead ([trading_env.py](src/tradedqn/env/trading_env.py)).
-11. **General policy vs an AAPL quirk?** Out-of-sample it *underperforms* (−28.8% vs −16.5%) — evidence it fit AAPL's 2020–2021 regime, not a general edge. Proving generality requires train/test across **multiple tickers and regimes** with consistent held-out Sharpe.
+11. **General policy vs an AAPL quirk?** Out-of-sample it shows *no edge* (−17.5% vs −16.5%, Sharpe −1.66) — evidence it fit AAPL's 2020–2021 regime, not a general edge. Proving generality requires train/test across **multiple tickers and regimes** with consistent held-out Sharpe.
 12. **Extend to another (financial or non-financial) problem, same RL structure?** Swap the `Environment` behind the SDK: define a new `state`/`action`/`reward` (e.g. energy dispatch, inventory control) in a `TradingEnvironment`-shaped class; the agent / training / backtest / SDK layers are domain-agnostic ([Extending it](#extending-it)).
 
 ## Research notebook & sensitivity analysis (§9)
