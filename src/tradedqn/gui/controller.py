@@ -68,7 +68,8 @@ class GuiController:
     def recommend(self) -> tuple[str, Figure]:
         """Recommend an action; return (status line, Q-value bar figure)."""
         rec = self.sdk.recommend()
-        return recommendation_line(rec), q_value_figure(rec["q_values"], rec["action_index"])
+        labels = [name.title() for name in rec["names"]]  # config-ordered action labels
+        return recommendation_line(rec), q_value_figure(rec["q_values"], rec["action_index"], labels)
 
     def compare(self, episodes=None, on_progress=None) -> tuple[str, Figure]:
         """Train Dueling vs plain DQN and chart both reward curves (§9 ablation)."""

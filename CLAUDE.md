@@ -97,7 +97,7 @@ If a pattern appears twice, extract a utility or base-class method.
 ## Domain Requirements (this assignment)
 
 ### Data (§5 — API Gatekeeper is now load-bearing)
-- Source: **Yahoo Finance** via `yfinance`. OHLCV, ~10 years.
+- Source: **Yahoo Finance** via `yfinance`. OHLCV, multi-year (this build: ~3 years, 2020–2023 — the binding §4 window).
 - **Rate-limit gatekeeper is mandatory**: throttle / cache so we never hammer
   the API. Persist raw pulls to a local parquet cache (+ CSV fallback) for reproducibility and offline runs.
 
@@ -141,6 +141,6 @@ If a pattern appears twice, extract a utility or base-class method.
 ## Pre-Submission Review Methodology
 Before any submission (or when asked "is this ready?"), walk
 `instructions/review_methodology/` (gitignored, local only). Start at
-`00_README.md`; the most important file is `10_self_critique_prompts.md`.
+`00_README.md`; the most important file is `self_critique_prompts.md`.
 Per-assignment progress + the requirements register live in
 `instructions/assignment-2/`.

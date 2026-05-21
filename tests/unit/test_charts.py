@@ -74,7 +74,7 @@ class TestComparisonFigure:
 
 class TestQValueFigure:
     def test_three_bars_with_chosen_highlighted(self):
-        fig = q_value_figure([0.1, 0.2, 0.5], action_index=2)
+        fig = q_value_figure([0.1, 0.2, 0.5], action_index=2, labels=["Sell", "Hold", "Buy"])
         ax = fig.axes[0]
         assert len(ax.patches) == 3            # Sell / Hold / Buy
         assert "Buy" in ax.get_title()         # chosen action named in the title

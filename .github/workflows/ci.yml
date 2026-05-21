@@ -44,7 +44,7 @@ jobs:
       - name: Run tests with coverage gate
         run: |
           uv run pytest tests/ \
-            --cov=src \
+            --cov=src/tradedqn \
             --cov-report=term-missing \
             --cov-report=xml \
             --junitxml=results/test-report.xml \

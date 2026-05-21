@@ -58,4 +58,5 @@ if [ "$found" -eq 1 ]; then
     exit 1
 fi
 
+echo "Secret-pattern scan passed (no obvious secrets in the staged tree)."
 exit 0

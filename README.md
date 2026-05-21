@@ -177,7 +177,8 @@ the loader validates at startup. Key groups:
 | `split` | `train`/`validation`/`test` | chronological split ratios (no look-ahead) |
 | `env` | `initial_capital`, `transaction_cost`, `slippage`, `risk_lambda`, `sharpe_window` | reward `r = ΔV − C − S + λ·Sharpe` |
 | `network` | `conv_channels` `[32,64]`, `kernel_size`, `dense_units` | Dueling Conv1D DQN shape |
-| `training` | `gamma`, `learning_rate`, `epsilon_*`, `replay_capacity`, `batch_size`, `train_frequency`, `target_update_frequency` | the DQN learning loop |
+| `training` | `gamma`, `learning_rate`, `episodes`, `epsilon_*`, `replay_capacity`, `batch_size`, `train_frequency`, `target_update_frequency` | the DQN learning loop |
+| (top-level) | `seed` (42), `version` | global RNG seed → reproducible runs; config-schema version (§8) |
 
 Edit values, re-run — nothing in code needs to change.
 
@@ -223,9 +224,10 @@ Select: 4
 Recommended action: BUY  (Q = [13.882, 13.827, 14.056])
 ```
 
-> Verbatim from a real run captured to [`assets/terminal_session.txt`](assets/terminal_session.txt).
-> Seeded (`config.seed`), so it reproduces the **Results** numbers below exactly — the
-> menu's Train uses the config default of 300 episodes.
+> Lightly reformatted (menu condensed, input digits inlined) from a real run captured
+> verbatim to [`assets/terminal_session.txt`](assets/terminal_session.txt). Seeded
+> (`config.seed`), so it reproduces the **Results** numbers below exactly — the menu's
+> Train uses the config default of 300 episodes.
 
 **GUI** (Tkinter + matplotlib) — a toolbar drives the SDK with inputs you can
 play with: a **ticker** + **date range** (train on AAPL, MSFT, TSLA…), an
@@ -280,7 +282,7 @@ return, Sharpe, drawdown. (3) *User control* — Quit any time; Save/Load brain.
 (5) *Error prevention* — handlers are wrapped; misuse surfaces a message.
 (6) *Recognition over recall* — labelled menu/buttons, no commands to memorise.
 (7) *Flexibility* — terminal for agents/automation, GUI for presentation.
-(8) *Aesthetic & minimalist* — only the six actions; no clutter.
+(8) *Aesthetic & minimalist* — only the five GUI buttons (six terminal-menu items); no clutter.
 (9) *Help users recover from errors* — `Error: call prepare_data() first` etc.,
 caught and shown. (10) *Help & documentation* — this README + `docs/`.
 
@@ -360,6 +362,13 @@ Why, and what I'd do differently:
 **Markets are hard, and that's the point.** The deliverable is a correct, honest
 DQN *system* with an analysable result — not a profitable trader. **Past ≠
 future.**
+
+**Honest self-assessment.** This is solid, careful engineering — but not flawless,
+and **I don't think it deserves a 100**. The overfitting, the single-ticker /
+single-regime scope, the negative out-of-sample Sharpe, and the deliberately
+deferred minors (no env-var bridge, single-seed reporting) are real gaps I'd close
+before calling it complete. The grade should reflect a project that holds up under
+a strict reading, not a perfect one.
 <!-- CONCLUSIONS:END -->
 
 ## Concept Q&A (§13)

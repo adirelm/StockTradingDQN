@@ -33,4 +33,5 @@ class InferenceService:
             "action": self.names[index],
             "action_index": index,
             "q_values": [float(v) for v in q],
+            "names": list(self.names),  # config-ordered labels (chart reads these, not a literal)
         }

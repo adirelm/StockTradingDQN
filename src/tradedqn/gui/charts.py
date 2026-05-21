@@ -11,7 +11,6 @@ from matplotlib.figure import Figure
 # UI-styling literals (size/dpi) are local presentation choices, not config.
 _FIGSIZE = (6.0, 3.2)
 _DPI = 160  # high-resolution figures for the README / docs (§9.3)
-_ACTIONS = ("Sell", "Hold", "Buy")
 
 
 def _plot_equity(ax, equity, benchmark) -> None:
@@ -85,14 +84,14 @@ def comparison_figure(histories) -> Figure:
     return fig
 
 
-def q_value_figure(q_values, action_index) -> Figure:
-    """Bar chart of the three action Q-values, the chosen one highlighted."""
+def q_value_figure(q_values, action_index, labels) -> Figure:
+    """Bar chart of the action Q-values (``labels`` from config), chosen one highlighted."""
     fig = Figure(figsize=_FIGSIZE, dpi=_DPI)
     ax = fig.add_subplot(111)
-    colors = ["#bbbbbb"] * len(_ACTIONS)
+    colors = ["#bbbbbb"] * len(labels)
     colors[action_index] = "#1f77b4"
-    ax.bar(_ACTIONS, q_values, color=colors)
-    ax.set_title(f"Q-values → {_ACTIONS[action_index]}")
+    ax.bar(labels, q_values, color=colors)
+    ax.set_title(f"Q-values → {labels[action_index]}")
     ax.set_ylabel("Q(s, a)")
     fig.tight_layout()
     return fig

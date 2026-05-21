@@ -33,7 +33,8 @@ class FakeSDK:
                     {"step": 0, "price": 100, "action": "buy"}]}
 
     def recommend(self, split="test"):
-        return {"action": "buy", "action_index": 2, "q_values": [0.1, 0.2, 0.3]}
+        return {"action": "buy", "action_index": 2, "q_values": [0.1, 0.2, 0.3],
+                "names": ["sell", "hold", "buy"]}
 
     def compare(self, episodes=None, on_episode=None):
         hist = {"Dueling DQN": [{"episode": 0, "epsilon": 0.3, "reward": 2.0}],

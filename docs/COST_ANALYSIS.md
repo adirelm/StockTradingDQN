@@ -17,7 +17,7 @@ The model is deliberately small — a Conv1D Dueling DQN over a 30×10 window.
 | State tensor | 30 × 10 float32 = 1.2 KB | one window |
 | Replay buffer | `replay_capacity` × (2 states + scalars) | 10 000 × ~2.5 KB ≈ 25 MB cap |
 | Device | CPU / Apple MPS | the net is tiny; GPU is not required |
-| Training | one episode ≈ one pass over the train slice (~515 steps for the 2020–2023 train slice) | see measured run below |
+| Training | one episode ≈ one pass over the train slice (~515 steps); headline run is 300 episodes | ~minutes on a laptop CPU (estimate, not instrumented) |
 | Inference | one forward pass on a 30×10 window | sub-millisecond on CPU |
 
 **Where it stops being free:** the cost scales with `window_size × features ×
@@ -28,8 +28,10 @@ loader starts to matter. Pulling data is the other limit — Yahoo Finance
 rate-limits, which is exactly why the §5 gatekeeper + parquet cache exist (fetch
 once, train offline).
 
-_Measured numbers from the README's real AAPL run are filled in by
-`scripts/generate_results.py` → `results/analysis/backtest_metrics.json`._
+_The README's **result** metrics (return / Sharpe / drawdown / trades) come from
+`scripts/generate_results.py` → `results/analysis/backtest_metrics.json`. Wall-clock
+runtime is **not** instrumented — training takes ~minutes on a laptop CPU (an
+estimate, not a committed measurement)._
 
 ## 2. Development cost (the Vibe Coding story)
 

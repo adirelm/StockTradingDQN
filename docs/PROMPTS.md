@@ -73,3 +73,15 @@ course guidelines: walk every requirement, one at a time, and only check it off
 with concrete evidence (a file path, a test, a screenshot). The review notes and
 the requirement register are kept as **local working files** (not part of the
 submission) — the instrument that stops a requirement from being missed.
+
+That review loop is where the human-judgment-over-AI-output story is clearest. A
+second pass (independently cross-checked with a different model) caught real
+issues the first build missed and the human directed the fixes: a **Buy & Hold
+benchmark anchored one day late** (the env now exposes the execution price so the
+equity/benchmark curves align), **`config.seed` declared but never applied to
+Torch** (added a `seed_everything` seam so a fresh run reproduces bit-for-bit),
+**`config.yaml` not shipped in the wheel** (§14 `importlib.resources` fallback),
+and a **γ/λ notation slip** in the reward formula. The human also chose the
+headline training budget (300 episodes) and the honest "no risk-adjusted edge"
+framing of the result. None of these were the AI's first instinct — they are the
+verification tax that *is* the cost of AI-assisted development.
