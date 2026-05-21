@@ -67,11 +67,12 @@ training:
   episodes: 300
   epsilon_start: 1.0           # ε-greedy schedule
   epsilon_min: 0.05
-  epsilon_decay: 0.995
+  epsilon_decay: 0.95          # per-episode; reaches the 0.05 floor by ~ep 58
   replay_capacity: 10000       # experience-replay buffer size
   batch_size: 64
   min_replay_before_train: 500 # warm-up transitions before optimisation starts
-  target_update_frequency: 100 # steps between target-network (θ⁻) syncs
+  train_frequency: 4           # optimise every N env-steps (standard DQN; faster)
+  target_update_frequency: 100 # optimisation steps between target-network (θ⁻) syncs
 
 backtest:
   initial_capital: 10000.0

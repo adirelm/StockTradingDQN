@@ -38,6 +38,7 @@ def tiny_cfg():
                 "replay_capacity": 100,
                 "batch_size": 4,
                 "min_replay_before_train": 4,
+                "train_frequency": 1,
                 "target_update_frequency": 2,
             },
         }

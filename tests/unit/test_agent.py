@@ -40,6 +40,15 @@ class TestLearn:
         loss = dqn_agent.learn()
         assert isinstance(loss, float) and np.isfinite(loss)
 
+    def test_train_frequency_gates_optimisation(self, tiny_cfg):
+        from tradedqn.model.agent import DQNAgent
+
+        tiny_cfg.training.train_frequency = 3  # optimise only every 3rd step
+        agent = DQNAgent(tiny_cfg)
+        fill_replay(agent, 8)
+        outcomes = [agent.learn() is not None for _ in range(6)]
+        assert outcomes == [False, False, True, False, False, True]
+
     def test_epsilon_decays_with_floor(self, dqn_agent):
         dqn_agent.epsilon = 1.0
         dqn_agent.decay_epsilon()

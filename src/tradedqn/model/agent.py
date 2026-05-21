@@ -26,6 +26,7 @@ class DQNAgent:
         self.batch_size = int(cfg.training.batch_size)
         self.min_replay = int(cfg.training.min_replay_before_train)
         self.target_update_frequency = int(cfg.training.target_update_frequency)
+        self.train_frequency = int(getattr(cfg.training, "train_frequency", 1))
         self.epsilon = float(cfg.training.epsilon_start)
         self.epsilon_min = float(cfg.training.epsilon_min)
         self.epsilon_decay = float(cfg.training.epsilon_decay)
@@ -37,6 +38,7 @@ class DQNAgent:
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=float(cfg.training.learning_rate))
         self.replay = ReplayBuffer(int(cfg.training.replay_capacity), self._rng)
         self._learn_steps = 0
+        self._env_steps = 0
 
     def _batch(self, state) -> torch.Tensor:
         return torch.as_tensor(np.asarray(state, dtype=np.float32), device=self.device).unsqueeze(0)
@@ -58,8 +60,14 @@ class DQNAgent:
         self.replay.push(state, action, reward, next_state, done)
 
     def learn(self) -> float | None:
-        """One optimisation step on a replay mini-batch; ``None`` until warmed up."""
-        if len(self.replay) < self.min_replay:
+        """Optimise on a replay mini-batch every ``train_frequency`` steps.
+
+        Returns ``None`` until the replay is warmed up and on the steps that are
+        skipped by the train-frequency gate (learning every env step is wasteful;
+        every few steps is standard DQN and far faster).
+        """
+        self._env_steps += 1
+        if len(self.replay) < self.min_replay or self._env_steps % self.train_frequency != 0:
             return None
         states, actions, rewards, next_states, dones = self.replay.sample(self.batch_size)
         states, next_states = states.to(self.device), next_states.to(self.device)
