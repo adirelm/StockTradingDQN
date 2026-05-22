@@ -30,6 +30,17 @@ class TestAct:
         assert all(dqn_agent.act(s) == dqn_agent.act(s, greedy=True) for _ in range(10))
 
 
+class TestSaliency:
+    def test_per_feature_importance_shape_and_sign(self, dqn_agent):
+        sal = dqn_agent.q_saliency(a_state())
+        assert sal.shape == (FEATURES,)                 # one importance score per input channel
+        assert (sal >= 0).all() and np.isfinite(sal).all()
+
+    def test_saliency_leaves_no_grad_on_policy(self, dqn_agent):
+        dqn_agent.q_saliency(a_state())
+        assert all(p.grad is None for p in dqn_agent.policy.parameters())  # training grads untouched
+
+
 class TestLearn:
     def test_learn_none_before_warmup(self, dqn_agent):
         dqn_agent.remember(a_state(), 1, 0.0, a_state(), False)
@@ -79,3 +90,12 @@ class TestTargetAndCheckpoint:
         s = a_state(0.3)
         assert fresh.act(s, greedy=True) == dqn_agent.act(s, greedy=True)
         assert fresh.epsilon == 0.42 and fresh.gamma == dqn_agent.gamma
+
+    def test_checkpoint_carries_metadata(self, dqn_agent, tiny_cfg, tmp_path):
+        from tradedqn.model.agent import DQNAgent
+
+        path = str(tmp_path / "best.pt")
+        dqn_agent.save(path, metadata={"episode": 42, "val_sharpe": 1.5})  # §6 best-by-val record
+        fresh = DQNAgent(tiny_cfg)
+        fresh.load(path)
+        assert fresh.metadata == {"episode": 42, "val_sharpe": 1.5}

@@ -19,6 +19,7 @@ from tradedqn.sdk import TradingSDK
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--episodes", type=int, default=None, help="override training episodes")
+    parser.add_argument("--validate-every", type=int, default=20, help="validation checkpoint cadence")
     parser.add_argument("--out", default="results/analysis", help="output directory")
     args = parser.parse_args()
 
@@ -30,10 +31,16 @@ def main() -> None:
     print(f"splits: {splits}", flush=True)
     episodes = args.episodes if args.episodes is not None else sdk.cfg.training.episodes
     history = []
+    best = {"sharpe": float("-inf"), "episode": -1}
     for i in range(episodes):
         record = sdk.train(1)[0]
         record["episode"] = i
         history.append(record)
+        if (i + 1) % args.validate_every == 0:  # §6 — checkpoint the best model by validation Sharpe
+            val = sdk.backtest("validation")     # greedy eval; does not perturb training RNG/weights
+            if val["sharpe_ratio"] > best["sharpe"]:
+                best = {"sharpe": val["sharpe_ratio"], "return": val["total_return"], "episode": i}
+                sdk.save_brain(sdk.cfg.paths.checkpoint, metadata=best)
         loss = record["mean_loss"]
         loss_str = f"{loss:.4f}" if loss is not None else "warmup"
         print(
@@ -41,7 +48,7 @@ def main() -> None:
             f"final={record['final_value']:.1f}  eps={record['epsilon']:.3f}  loss={loss_str}",
             flush=True,
         )
-    result = sdk.backtest("test")
+    result = sdk.backtest("test")  # headline: the fully-trained policy on the held-out test slice
     recommendation = sdk.recommend("test")
 
     training_figure(history).savefig(out / "training_reward.png", bbox_inches="tight")
@@ -56,6 +63,7 @@ def main() -> None:
         episodes=len(history),
         splits=splits,
         recommendation=recommendation["action"],
+        best_checkpoint=best,  # §6 — best-by-validation-Sharpe model saved to config.paths.checkpoint
     )
     (out / "backtest_metrics.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     print(json.dumps(summary, indent=2))

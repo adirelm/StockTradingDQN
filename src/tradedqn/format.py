@@ -8,9 +8,14 @@ from __future__ import annotations
 
 
 def recommendation_line(rec: dict) -> str:
-    """One-line Buy/Hold/Sell recommendation with the raw Q-vector."""
+    """One-line Buy/Hold/Sell recommendation: Q-vector, confidence, top feature drivers."""
     quotes = ", ".join(f"{value:.3f}" for value in rec["q_values"])
-    return f"Recommended action: {rec['action'].upper()}  (Q = [{quotes}])"
+    line = f"Recommended action: {rec['action'].upper()}  (Q = [{quotes}])"
+    if rec.get("confidence") is not None:
+        line += f"  ·  confidence {rec['confidence']:.0%}"
+    if rec.get("top_features"):
+        line += f"  ·  drivers: {', '.join(rec['top_features'])}"
+    return line
 
 
 def backtest_line(result: dict) -> str:

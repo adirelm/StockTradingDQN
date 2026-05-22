@@ -37,6 +37,23 @@ benchmark — all behind one SDK with both a terminal and a GUI.
 - **Interfaces** — a **terminal menu** (built first) and a **Tkinter +
   matplotlib GUI**, both over the same `TradingSDK`.
 
+## Lecture deck → implementation (§2)
+
+How each concept from the course deck (*DQN stock trading*, Dr. Yoram Segal) is
+expressed in this project:
+
+| Lecture concept | Deck slides | Where it lives here |
+|---|---|---|
+| Q-Table → **function approximation** (why a table can't span continuous, multi-feature windows) | 3–6, 14–15 | [Concept Q&A #2](#concept-qa-13); [network.py](src/tradedqn/model/network.py) |
+| **RL formulation** — Agent/Environment/State/Action/Reward/Episode/Policy/Return | 7–10 | [RL mapping](#objective) + [Concept Q&A](#concept-qa-13); [trading_env.py](src/tradedqn/env/trading_env.py) |
+| **Data → state tensor** (the exact 30×10 input shape) | 11–13 | [Dataset (§4)](#dataset-4); [trading_env.py](src/tradedqn/env/trading_env.py) `assemble_state` |
+| **Dueling DQN** — value & advantage streams, Q-values | 16–21 | [Network](#network--dueling-conv1d-dqn); `Q=V+A−mean(A)` in [network.py](src/tradedqn/model/network.py) |
+| **Exploration & stabilization** — ε-greedy, experience replay, target network | 22–24 | [agent.py](src/tradedqn/model/agent.py), [replay_buffer.py](src/tradedqn/model/replay_buffer.py) |
+| **Full training cycle** — reset/step, transitions, batch sampling, Bellman target, loss, weight update | 25 | [training.py](src/tradedqn/services/training.py), [agent.py](src/tradedqn/model/agent.py) `learn` |
+| **Backtest & results** — equity curve, Buy & Hold, Sharpe, max drawdown, win rate | 26–27 | [Results & analysis](#results--analysis); [backtest.py](src/tradedqn/services/backtest.py), [metrics.py](src/tradedqn/services/metrics.py) |
+| **Tests & OOP architecture** — system & class diagrams, engineering quality | 28–29 | [OOP layers](#oop-layers-responsibility-separation), [Tests](#tests) |
+| **Theory** — the agent learns a **decision policy**, not a price forecast | 30–31 | [Objective](#objective), [Concept Q&A #1](#concept-qa-13) |
+
 ## Architecture (data flow)
 
 The UIs depend only on the SDK; the SDK orchestrates the engine (§4 mandate).
@@ -117,6 +134,9 @@ sequenceDiagram
     SDK-->>User: total_return · Sharpe · drawdown · win-rate · trades
 ```
 
+> The Mermaid source for all three diagrams (data-flow, OOP layers, backtest sequence)
+> is also kept as standalone files in [`docs/diagrams/`](docs/diagrams/) (§10/§11).
+
 ## Network — Dueling Conv1D DQN
 
 ```
@@ -138,6 +158,41 @@ Yahoo Finance rate-limits rapid calls. `RateLimitGatekeeper` enforces a minimum
 interval **and** a max-calls-per-window before any live fetch; `DataClient` is
 **cache-first** (returns the local parquet when present, with a `{ticker}.csv`
 fallback), so one pull is cached and every subsequent run is offline and reproducible.
+
+## Dataset (§4)
+
+**Source** (binding): Yahoo Finance via `yfinance`, **AAPL**, **2020-01-01 → 2023-01-01**,
+daily (`interval="1d"`), raw columns `Open, High, Low, Close, Volume`. Cached to
+`data/raw/AAPL_2020-01-01_2023-01-01.parquet` (snappy) with a `data/raw/AAPL.csv`
+fallback. **Reproduce the exact raw pull** with the snippet in
+[`docs/PRD_data.md`](docs/PRD_data.md) (the same `yf.download` + parquet/CSV logic, wrapped
+in `DataClient` — never pasted into training code).
+
+**Raw OHLCV — 756 rows; first 5:**
+
+| Date | Open | High | Low | Close | Volume |
+|---|---:|---:|---:|---:|---:|
+| 2020-01-02 | 71.34 | 72.39 | 71.09 | 72.33 | 135,480,400 |
+| 2020-01-03 | 71.56 | 72.39 | 71.41 | 71.63 | 146,322,800 |
+| 2020-01-06 | 70.75 | 72.24 | 70.50 | 72.20 | 118,387,200 |
+| 2020-01-07 | 72.21 | 72.47 | 71.64 | 71.86 | 108,872,000 |
+| 2020-01-08 | 71.57 | 73.32 | 71.57 | 73.02 | 132,079,200 |
+
+**After feature engineering — 737 rows** (warmup NaNs dropped); the 8 market features,
+first 5 rows:
+
+| Date | log_return | rsi_14 | macd | macd_signal | macd_hist | bb_pct | vwap_dist | volume_norm |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| 2020-01-30 | −0.0015 | 63.88 | 1.1937 | 1.0045 | 0.1892 | 0.8536 | 0.0384 | −0.0731 |
+| 2020-01-31 | −0.0454 | 49.37 | 0.9662 | 0.9968 | −0.0306 | 0.4059 | −0.0101 | 0.4262 |
+| 2020-02-03 | −0.0028 | 42.99 | 0.7606 | 0.9496 | −0.1890 | 0.3467 | −0.0143 | 0.2298 |
+| 2020-02-04 | 0.0325 | 54.74 | 0.7866 | 0.9170 | −0.1304 | 0.6846 | 0.0155 | −0.0395 |
+| 2020-02-05 | 0.0081 | 57.62 | 0.8479 | 0.9032 | −0.0552 | 0.7795 | 0.0209 | −0.1675 |
+
+The env then injects the 2 portfolio channels (`position`, `unrealized_pnl` — the brief's
+`unrealised_pnl`, American spelling) at runtime → the **30×10** state tensor, shape
+`(N, 30, 10)`. **Split is strictly chronological 70/15/15** (train 515 · val 110 · test 112) —
+never shuffled; a `clip-future-highs` test guards against look-ahead leakage.
 
 ## Installation
 
@@ -163,6 +218,19 @@ A typical session: **Prepare data** (fetch + cache + features + split) → **Tra
 (per-episode reward/ε/loss printed) → **Backtest** (equity vs Buy&Hold + metrics)
 → **Recommend** (latest window → Buy/Hold/Sell). Each terminal action prints its
 result; the GUI shows the same via a status line + an embedded chart.
+
+**Action semantics (§3/§7).** Positions are **all-in / all-out**: `Buy` invests *all*
+cash; `Sell` liquidates *all* shares; `Hold` does nothing. So `Buy` **while already
+holding is a no-op** (no cash left to invest) and `Sell` while flat is a no-op — neither
+crashes nor is separately penalised; the agent simply can't act, which is the simplest
+faithful model of the deck's "have stock or not" position.
+
+**Checkpoints (§6/§11).** The trained model isn't committed (it regenerates
+deterministically). `scripts/generate_results.py` **auto-saves the best model by
+validation Sharpe** during training to `results/checkpoints/dqn.pt` (path from
+`config.paths.checkpoint`), with run **metadata** (episode + validation metric) — proper
+early-stopping selection. The menu's **Save brain** / **Load brain** save/restore on
+demand; reload uses `weights_only` (§7 security).
 
 ## Configuration
 
@@ -221,7 +289,7 @@ Trained 300 episode(s); ε=0.050  final value=344403.66
 Select: 3
 Backtest: total_return=-17.49%  benchmark=-16.47%  Sharpe=-1.66  max_drawdown=19.41%  win_rate=20.00%  trades=21
 Select: 4
-Recommended action: BUY  (Q = [13.882, 13.827, 14.056])
+Recommended action: BUY  (Q = [13.882, 13.827, 14.056])  ·  confidence 38%  ·  drivers: volume_norm, log_return, macd_hist
 ```
 
 > Lightly reformatted (menu condensed, input digits inlined) from a real run captured
@@ -299,7 +367,7 @@ screen-reader testing; chart colours are not formally CVD-checked.
 episodes.** Chronological split: train 515 days · validation 110 · test 112.
 Evaluated **greedy** on the held-out **test** slice it never trained on.
 
-![Training reward per episode](results/analysis/training_reward.png)
+![Training reward + ε (top) and mean MSE loss (bottom) per episode](results/analysis/training_reward.png)
 
 ![Backtest equity vs Buy & Hold](results/analysis/backtest_equity.png)
 
@@ -349,15 +417,19 @@ not hidden:
   2020–2021 bull regime and carries no real edge into the 2022 regime shift.
   Textbook overfitting on a single ticker over a single regime.
 
-Why, and what I'd do differently:
+What's already done about it, and what I'd still do:
 
-- **Regularise:** dropout / weight decay, a smaller network, **early-stopping on
-  the validation Sharpe** (not on training reward), and training across
-  **multiple tickers / regimes** so the policy can't memorise one symbol.
-- **Re-weight risk / cut churn:** the Sharpe-heavy reward (λ=1.0) plus 21 trades
-  in a falling market hurt; tune the cost/risk weights on validation.
-- **Sweep hyperparameters** (γ, learning rate, λ, network size) on the
-  **validation** split before ever touching test (done — see the §9 sweep).
+- **Select on validation, not training reward** *(done)* — training now **checkpoints
+  the best model by validation Sharpe** (`scripts/generate_results.py`, saved with
+  metadata), the proper early-stopping signal.
+- **Test across more than one ticker** *(started)* — the [§4 cross-ticker NVDA
+  experiment](#comparative-experiments-4-cross-ticker--7-reward-design) shows the verdict
+  flips per symbol; a full study needs many tickers/regimes + multiple seeds.
+- **Sweep hyperparameters** on the **validation** split before touching test *(done —
+  see the §9 sweep)*.
+- **Still to do:** stronger regularisation (dropout / weight decay, a smaller network)
+  and re-weighting the Sharpe-heavy reward (λ=1.0) to curb churn (21 trades in a falling
+  market hurt).
 
 **Markets are hard, and that's the point.** The deliverable is a correct, honest
 DQN *system* with an analysable result — not a profitable trader. **Past ≠
@@ -370,6 +442,52 @@ deferred minors (no env-var bridge, single-seed reporting) are real gaps I'd clo
 before calling it complete. The grade should reflect a project that holds up under
 a strict reading, not a perfect one.
 <!-- CONCLUSIONS:END -->
+
+## Comparative experiments (§4 cross-ticker · §7 reward design)
+
+Two controlled experiments the brief mandates, both **seeded + reproducible**:
+
+```bash
+uv run python scripts/compare_experiments.py --episodes 300   # → results/analysis/{cross_ticker,reward_comparison}.{json,png}
+```
+
+### §7 — reward design: basic ΔV vs full risk/cost-adjusted (AAPL test)
+
+Same data, same agent, **only the reward differs**: a *basic* reward (portfolio-value
+change only) vs the *full* reward (`ΔV − cost − slippage + λ·Sharpe`).
+
+![Reward design comparison](results/analysis/reward_comparison.png)
+
+| Reward (AAPL test) | Total return | Sharpe | Max DD | Win rate | Trades |
+|---|---:|---:|---:|---:|---:|
+| Full (`ΔV − C − S + λ·Sharpe`) | −17.5 % | −1.66 | 19.4 % | 20 % | 21 |
+| Basic (ΔV only) | −17.6 % | −1.64 | 20.2 % | 67 % | 19 |
+
+**Conclusion:** on this hard 2022 slice both land at ≈ −17.5 %, but the reward design
+**reshapes the policy** — the cost/slippage/risk terms change the trade pattern and
+drawdown profile. The end-return parity here is a property of the losing slice; the
+full reward's purpose (discipline over-trading, reward risk-adjustment) is what matters
+over longer/easier regimes. Reward design changes *what* the agent optimises, not just
+the number.
+
+### §4 — cross-ticker: the same pipeline on NVDA
+
+The AAPL pipeline re-run on **NVDA** (identical mechanism; `data/raw/NVDA.csv` committed
+for reproducibility), to test whether the result is a property of the *method* or of AAPL.
+
+![NVDA cross-ticker](results/analysis/cross_ticker.png)
+
+| Held-out test | DQN | Buy & Hold | Sharpe |
+|---|---:|---:|---:|
+| **AAPL** (headline) | −17.5 % | −16.5 % | −1.66 |
+| **NVDA** | **+26.6 %** | +7.1 % | **+1.73** |
+
+**Conclusion — the most important finding.** On NVDA the DQN **beats** Buy & Hold
+(+26.6 % vs +7.1 %, positive Sharpe); on AAPL it **loses** (−17.5 % vs −16.5 %, negative
+Sharpe). **Same method, opposite verdicts.** This is precisely why a single-ticker
+backtest can't establish skill (Concept Q&A #11): the NVDA "win" is just as likely
+regime luck as edge. It would take many tickers/regimes with consistent held-out Sharpe
+to claim a general policy. **Past ≠ future.**
 
 ## Concept Q&A (§13)
 
@@ -431,8 +549,35 @@ violations, ≤150 code lines/file, secret-scan, uv-only.
 
 ## Tests
 
+**171 tests · 100% statement + branch coverage** (the suite *fails* under 85%). Run:
+
 ```bash
 uv run pytest tests/ --cov=src --cov-report=term-missing
+```
+
+Every layer the brief (§9) lists has a test (TDD, RED→GREEN→REFACTOR):
+
+| Component | Test file(s) |
+|---|---|
+| Config load + version validation | `test_config` |
+| Dataset / `DataClient` + §5 gatekeeper | `test_data_client`, `test_gatekeeper` |
+| Feature engineering + chronological split | `test_indicators`, `test_preprocessor`, `test_dataset` |
+| Environment, reward, portfolio | `test_trading_env`, `test_reward`, `test_portfolio` |
+| Replay buffer | `test_replay_buffer` |
+| Network forward + dueling/plain ablation | `test_network` |
+| Training step, target sync, **checkpoint save/load** | `test_agent`, `test_training` |
+| Backtest + metrics, inference, SDK | `test_backtest`, `test_metrics`, `test_inference`, `test_sdk` |
+| Seeding / reproducibility | `test_seeding` |
+| Terminal + GUI logic | `test_menu`, `test_gui_controller`, `test_charts`, `test_format` |
+
+Latest run:
+
+```text
+$ uv run pytest tests/ -q
+...
+TOTAL                                     877      0    126      0   100%
+Required test coverage of 85% reached. Total coverage: 100.00%
+171 passed in 4.54s
 ```
 
 ## Project structure
@@ -474,10 +619,19 @@ name the change's intent, giving a reviewable development arc.
 
 ## References
 
+**Assignment base & data tools** (§16):
+
+- [`rmisegal/DQN-stock`](https://github.com/rmisegal/DQN-stock) — the course's **DQN-Trader-SDK** reference project this assignment is built on. We reproduced it at the *assembly* level (layered SDK, Gymnasium-style env, Dueling DQN) and re-designed/justified the code rather than copying it.
+- [`yfinance`](https://github.com/ranaroussi/yfinance) — Yahoo Finance market-data downloader; the binding §4 data source (`yf.download`, daily OHLCV).
+- [Gymnasium](https://gymnasium.farama.org/) — the `reset()`/`step()` environment API style the `TradingEnvironment` follows.
+
+**Reinforcement-learning literature**:
+
 - Sutton & Barto (2018), *Reinforcement Learning: An Introduction*, 2nd ed. — RL, Bellman, policy/value.
 - Watkins & Dayan (1992), *Q-learning* — the off-policy Q-update.
 - Mnih et al. (2015), *Human-level control through deep reinforcement learning*, Nature — **DQN** (experience replay + target network).
 - Wang et al. (2016), *Dueling Network Architectures for Deep Reinforcement Learning* — the **Dueling** value/advantage split used here.
+- Schaul et al. (2016), *Prioritized Experience Replay* — referenced by the brief; **not** used here (we use uniform replay, a deliberate simplification — see Conclusions).
 - Fischer (2018), survey on *Reinforcement Learning in Financial Markets* — trading env, costs, backtesting.
 - Hugging Face *Deep RL Course*, Unit 3 — ε-greedy, Bellman target, replay.
 **Standards & sources referenced** (§18):

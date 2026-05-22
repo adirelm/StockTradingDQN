@@ -1,0 +1,19 @@
+sequenceDiagram
+    actor User
+    participant SDK as TradingSDK
+    participant Data as DataClient+Gatekeeper
+    participant Env as TradingEnvironment
+    participant Agent as DQNAgent
+    User->>SDK: prepare_data()
+    SDK->>Data: get_ohlcv() (gatekept, cache-first)
+    Data-->>SDK: OHLCV → features → chronological split → fit-on-train normalize
+    User->>SDK: train(episodes)
+    loop each episode
+        SDK->>Env: reset() / step(action)
+        Env-->>Agent: (s, a, r, s', done)
+        Agent->>Agent: remember → learn (Bellman target + MSE) → sync target
+    end
+    User->>SDK: backtest("test")
+    SDK->>Env: greedy rollout over held-out slice
+    Env-->>SDK: equity curve + trade markers
+    SDK-->>User: total_return · Sharpe · drawdown · win-rate · trades

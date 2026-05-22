@@ -1,0 +1,29 @@
+flowchart TB
+  subgraph UI["UI (presentation only)"]
+    CLI[TerminalApp]
+    GUI[MainWindow → GuiController]
+  end
+  subgraph FACADE["SDK"]
+    SDK[TradingSDK]
+  end
+  subgraph SVC["Services"]
+    TR[TrainingService]
+    BT[BacktestService]
+    INF[InferenceService]
+  end
+  subgraph MODEL["Model"]
+    AG[DQNAgent]
+    NET[DuelingDQN]
+    RB[ReplayBuffer]
+  end
+  subgraph ENVL["Env"]
+    ENV[TradingEnvironment]
+    PF[Portfolio]
+    RW[RewardFunction]
+  end
+  subgraph DATA["Data"]
+    DC[DataClient]
+    GK[RateLimitGatekeeper]
+    PP[Preprocessor]
+  end
+  UI --> FACADE --> SVC --> MODEL --> ENVL --> DATA

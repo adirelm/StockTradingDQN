@@ -54,18 +54,25 @@ def backtest_figure(result) -> Figure:
 
 
 def training_figure(history) -> Figure:
-    """Per-episode training reward (left axis) and ε decay (right axis)."""
-    fig = Figure(figsize=_FIGSIZE, dpi=_DPI)
-    ax = fig.add_subplot(111)
-    ax.plot([r["reward"] for r in history], label="episode reward", color="#2ca02c")
-    ax.set_title("Training progress")
-    ax.set_xlabel("episode")
-    ax.set_ylabel("cumulative reward")
+    """Reward + ε decay (top) and mean training loss (bottom) per episode (§10)."""
+    fig = Figure(figsize=(6.0, 4.8), dpi=_DPI)
+    top = fig.add_subplot(2, 1, 1)
+    top.plot([r["reward"] for r in history], label="episode reward", color="#2ca02c")
+    top.set_title("Training progress")
+    top.set_ylabel("cumulative reward")
     if history and "epsilon" in history[0]:
-        eps = ax.twinx()
+        eps = top.twinx()
         eps.plot([r["epsilon"] for r in history], label="ε", color="#ff7f0e", linestyle=":")
         eps.set_ylabel("ε (exploration)")
-    ax.legend(loc="best")
+    top.legend(loc="best")
+    bottom = fig.add_subplot(2, 1, 2)
+    losses = [(i, r["mean_loss"]) for i, r in enumerate(history) if r.get("mean_loss") is not None]
+    if losses:  # mean_loss is None during replay warmup — skip those episodes
+        steps, values = zip(*losses, strict=True)
+        bottom.plot(steps, values, label="mean loss (MSE)", color="#1f77b4")
+        bottom.legend(loc="best")
+    bottom.set_xlabel("episode")
+    bottom.set_ylabel("mean loss")
     fig.tight_layout()
     return fig
 

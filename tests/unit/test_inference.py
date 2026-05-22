@@ -34,6 +34,13 @@ class TestRecommend:
         state = a_state()
         assert rec_index(svc, state) == dqn_agent.act(state, greedy=True)
 
+    def test_confidence_and_feature_attribution(self, dqn_agent, tiny_cfg):
+        svc = InferenceService.from_config(dqn_agent, tiny_cfg)
+        rec = svc.recommend(a_state())
+        assert 0.0 <= rec["confidence"] <= 1.0          # softmax probability of the chosen action
+        assert len(rec["top_features"]) == 3            # top-k saliency drivers (§8 explanation)
+        assert set(rec["top_features"]) <= set(tiny_cfg.features.names)
+
 
 def rec_index(svc, state):
     return svc.recommend(state)["action_index"]

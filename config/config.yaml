@@ -14,6 +14,7 @@ data:
   cache_dir: "data/raw"        # parquet cache (+ CSV fallback) → offline, reproducible
   # §5 API gatekeeper — Yahoo Finance rate-limits rapid repeat calls.
   rate_limit:
+    version: "1.0.0"           # §8.1 Table-2 rate_limits.version (consolidated into this file — ADR-001)
     min_interval_seconds: 2.0  # minimum gap between live API calls
     max_calls_per_window: 5    # at most N calls ...
     window_seconds: 60.0       # ... per rolling window
@@ -32,7 +33,7 @@ features:
     - vwap_dist
     - volume_norm
     - position
-    - unrealized_pnl
+    - unrealized_pnl           # the brief's "unrealised_pnl" (American spelling)
   ma_period: 20                # window for Bollinger %B, VWAP distance, volume-norm
   bb_num_std: 2.0              # Bollinger band width (±k·σ)
   rsi_period: 14

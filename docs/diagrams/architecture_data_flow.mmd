@@ -1,0 +1,15 @@
+flowchart LR
+  YF[Yahoo Finance] --> DC[DataClient + §5 Gatekeeper]
+  DC --> PQ[(parquet cache)]
+  DC --> PP[Preprocessor<br/>8 indicators + normalize]
+  PP --> SP[chronological split<br/>train / val / test]
+  SP --> ENV[TradingEnvironment<br/>30×10 state]
+  ENV --> AG[DQNAgent<br/>Dueling DQN + Replay + Target]
+  AG --> TR[TrainingService]
+  AG --> BT[BacktestService]
+  AG --> INF[InferenceService]
+  TR --> SDK[TradingSDK facade]
+  BT --> SDK
+  INF --> SDK
+  SDK --> CLI[Terminal menu]
+  SDK --> GUI[Tkinter + matplotlib GUI]

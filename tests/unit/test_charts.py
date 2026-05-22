@@ -35,8 +35,16 @@ class TestTrainingFigure:
     def test_adds_epsilon_twin_axis_when_present(self):
         history = [{"reward": 1.0, "epsilon": 0.9}, {"reward": 2.0, "epsilon": 0.7}]
         fig = training_figure(history)
-        assert len(fig.axes) == 2  # reward axis + ε twin axis
+        assert len(fig.axes) == 3  # reward axis + ε twin axis + loss subplot
         assert list(fig.axes[1].get_lines()[0].get_ydata()) == [0.9, 0.7]
+
+    def test_plots_loss_subplot_skipping_warmup_none(self):
+        history = [{"reward": 1.0, "mean_loss": None}, {"reward": 2.0, "mean_loss": 0.5},
+                   {"reward": 1.5, "mean_loss": 0.3}]
+        fig = training_figure(history)
+        loss_ax = fig.axes[-1]  # bottom subplot
+        assert list(loss_ax.get_lines()[0].get_ydata()) == [0.5, 0.3]  # None warmup skipped
+        assert list(loss_ax.get_lines()[0].get_xdata()) == [1, 2]      # at their episode indices
 
 
 class TestBacktestFigure:

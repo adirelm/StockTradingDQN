@@ -19,7 +19,8 @@ def tiny_cfg():
     return Config(
         {
             "seed": 0,
-            "features": {"window_size": WINDOW, "features_count": 10},
+            "features": {"window_size": WINDOW, "features_count": 10,
+                         "names": [f"f{i}" for i in range(10)]},
             "actions": {"sell": 0, "hold": 1, "buy": 2},
             "network": {"conv_channels": [8, 16], "kernel_size": 3, "dense_units": 16},
             "env": {

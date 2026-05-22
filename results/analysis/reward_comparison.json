@@ -1,0 +1,19 @@
+{
+  "full": {
+    "total_return": -0.17487480249414855,
+    "benchmark_return": -0.16471637116946491,
+    "sharpe_ratio": -1.6582807095679633,
+    "max_drawdown": 0.19407231679548057,
+    "win_rate": 0.2,
+    "num_trades": 21
+  },
+  "basic": {
+    "total_return": -0.1762773126183219,
+    "benchmark_return": -0.16471637116946491,
+    "sharpe_ratio": -1.6409592871562388,
+    "max_drawdown": 0.20170736303759443,
+    "win_rate": 0.6666666666666666,
+    "num_trades": 19
+  },
+  "episodes": 300
+}

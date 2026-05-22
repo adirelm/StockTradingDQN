@@ -62,6 +62,18 @@ class DQNAgent:
         with torch.no_grad():
             return self.policy(self._batch(state)).squeeze(0).cpu().numpy()
 
+    def q_saliency(self, state) -> np.ndarray:
+        """Per-feature attribution: |∂ maxₐ Q / ∂ input| summed over the time axis.
+
+        A saliency map answering "which features drove this decision" (§8): the
+        gradient of the chosen action's Q-value w.r.t. each input channel.
+        """
+        inputs = self._batch(state).requires_grad_(True)
+        self.policy(inputs).max().backward()
+        grad = inputs.grad.detach().abs().squeeze(0)  # (window, features)
+        self.policy.zero_grad(set_to_none=True)        # don't perturb training grads
+        return grad.sum(dim=0).cpu().numpy()           # (features,)
+
     def remember(self, state, action, reward, next_state, done) -> None:
         """Store a transition (s, a, r, s', done) in the replay buffer."""
         self.replay.push(state, action, reward, next_state, done)
@@ -100,8 +112,12 @@ class DQNAgent:
         """Copy the policy weights into the frozen target network (θ⁻ ← θ)."""
         self.target.load_state_dict(self.policy.state_dict())
 
-    def save(self, path: str) -> None:
-        """Checkpoint policy+target weights and ε/γ to ``path`` (tensors only)."""
+    def save(self, path: str, metadata: dict | None = None) -> None:
+        """Checkpoint policy+target weights, ε/γ, and run ``metadata`` to ``path`` (tensors only).
+
+        ``metadata`` carries the §6 reproducibility record (e.g. episode + validation
+        metric of a best-by-validation checkpoint).
+        """
         target_path = Path(path)
         target_path.parent.mkdir(parents=True, exist_ok=True)
         torch.save(
@@ -110,13 +126,15 @@ class DQNAgent:
                 "target": self.target.state_dict(),
                 "epsilon": self.epsilon,
                 "gamma": self.gamma,
+                "metadata": dict(metadata or {}),
             },
             target_path,
         )
 
     def load(self, path: str) -> None:
-        """Restore weights and ε/γ from a checkpoint (``weights_only=True``)."""
+        """Restore weights, ε/γ, and ``metadata`` from a checkpoint (``weights_only=True``)."""
         checkpoint = torch.load(path, map_location=self.device, weights_only=True)
+        self.metadata = checkpoint.get("metadata", {})
         self.policy.load_state_dict(checkpoint["policy"])
         self.target.load_state_dict(checkpoint["target"])
         self.epsilon = float(checkpoint["epsilon"])

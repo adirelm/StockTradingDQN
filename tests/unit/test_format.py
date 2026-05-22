@@ -6,6 +6,15 @@ from tradedqn.format import backtest_line, recommendation_line
 def test_recommendation_line_uppercases_action_and_lists_q():
     line = recommendation_line({"action": "buy", "q_values": [0.1, 0.2, 0.3]})
     assert "BUY" in line and "0.100" in line and "0.300" in line
+    assert "confidence" not in line and "drivers" not in line  # optional fields absent
+
+
+def test_recommendation_line_includes_confidence_and_drivers():
+    line = recommendation_line(
+        {"action": "buy", "q_values": [0.1, 0.2, 0.7],
+         "confidence": 0.55, "top_features": ["rsi_14", "macd"]}
+    )
+    assert "confidence 55%" in line and "drivers: rsi_14, macd" in line
 
 
 def test_backtest_line_formats_percentages_and_counts():

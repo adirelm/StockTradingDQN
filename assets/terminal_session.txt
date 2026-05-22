@@ -37,7 +37,7 @@ Select: Backtest: total_return=-17.49%  benchmark=-16.47%  Sharpe=-1.66  max_dra
   5. Save brain
   6. Load brain
   0. Quit
-Select: Recommended action: BUY  (Q = [13.882, 13.827, 14.056])
+Select: Recommended action: BUY  (Q = [13.882, 13.827, 14.056])  ·  confidence 38%  ·  drivers: volume_norm, log_return, macd_hist
 
 === TradeDQN ===
   1. Prepare data

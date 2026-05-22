@@ -1,0 +1,12 @@
+{
+  "ticker": "NVDA",
+  "metrics": {
+    "total_return": 0.26595819292178047,
+    "benchmark_return": 0.07145040456904272,
+    "sharpe_ratio": 1.7338079600337064,
+    "max_drawdown": 0.14063669840044743,
+    "win_rate": 0.3,
+    "num_trades": 21
+  },
+  "episodes": 300
+}

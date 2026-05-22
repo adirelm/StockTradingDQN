@@ -108,9 +108,9 @@ class TradingSDK:
         market = features.to_numpy(dtype="float32")[-window:]
         return self.inference.recommend(assemble_state(market, position=0.0, unrealized_pnl=0.0))
 
-    def save_brain(self, path: str) -> None:
-        """Save the agent checkpoint to ``path`` (refused if it escapes the project root)."""
-        self.agent.save(assert_in_project(path))
+    def save_brain(self, path: str, metadata: dict | None = None) -> None:
+        """Save the agent checkpoint (+ optional run ``metadata``) to ``path`` (path-guarded)."""
+        self.agent.save(assert_in_project(path), metadata)
 
     def load_brain(self, path: str) -> None:
         """Load an agent checkpoint from ``path`` (path-guarded)."""

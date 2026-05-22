@@ -120,5 +120,10 @@
     "validation": 110,
     "test": 112
   },
-  "recommendation": "buy"
+  "recommendation": "buy",
+  "best_checkpoint": {
+    "sharpe": -0.22703293048159467,
+    "return": -0.019582696749999018,
+    "episode": 59
+  }
 }
