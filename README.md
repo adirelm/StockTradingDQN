@@ -503,7 +503,7 @@ The twelve questions the brief requires the README to answer, with pointers to t
 8. **Exploration (training) vs evaluation (backtest)?** Training is ε-greedy (random with prob ε to explore); the backtest is **greedy** (`argmax Q`, ε=0) — we evaluate the learned policy, not exploration noise ([agent.py](src/tradedqn/model/agent.py), [backtest.py](src/tradedqn/services/backtest.py)).
 9. **Is Total Return enough?** No — a high return can hide huge risk. We also report **Sharpe** (risk-adjusted), **Max Drawdown** (worst pain), and **Win Rate** (consistency) so a lucky high-variance run can't pass as skill ([metrics.py](src/tradedqn/services/metrics.py)).
 10. **Which env/reward bugs fake a good backtest?** Look-ahead (using `price[t+1]` in the state), normalization fit on the full series, an off-by-one reward (crediting a trade before it executes), or zero transaction cost — all inflate results. Our env executes at `prices[t]` with the next day only as *outcome*, and a test asserts no look-ahead ([trading_env.py](src/tradedqn/env/trading_env.py)).
-11. **General policy vs an AAPL quirk?** Out-of-sample it shows *no edge* (−17.5% vs −16.5%, Sharpe −1.66) — evidence it fit AAPL's 2020–2021 regime, not a general edge. Proving generality requires train/test across **multiple tickers and regimes** with consistent held-out Sharpe.
+11. **General policy vs an AAPL quirk?** The [§4 cross-ticker test](#comparative-experiments-4-cross-ticker--7-reward-design) answers this directly: the **same method loses on AAPL (−17.5% vs −16.5%) but beats Buy & Hold on NVDA (+26.6% vs +7.1%)**. Opposite verdicts on two symbols is itself the evidence — there's no *consistent* edge, just regime-dependent behaviour. Establishing generality would need consistent held-out Sharpe across **many tickers and regimes**, not one lucky symbol.
 12. **Extend to another (financial or non-financial) problem, same RL structure?** Swap the `Environment` behind the SDK: define a new `state`/`action`/`reward` (e.g. energy dispatch, inventory control) in a `TradingEnvironment`-shaped class; the agent / training / backtest / SDK layers are domain-agnostic ([Extending it](#extending-it)).
 
 ## Research notebook & sensitivity analysis (§9)
@@ -522,6 +522,32 @@ uv run --with jupyter jupyter lab notebooks/analysis.ipynb   # open the analysis
 ```
 
 ![Validation Sharpe sensitivity (OAT sweep)](results/analysis/sweep.png)
+
+## Originality — what we added beyond the baseline (§12)
+
+The brief's threshold is "reproduce the `DQN-Trader-SDK` at the assembly level." Beyond that
+minimum, this project adds:
+
+- **Two controlled experiments** — a [Dueling-vs-plain DQN ablation](#network--dueling-conv1d-dqn)
+  (config-toggled), a [cross-ticker generalisation test](#comparative-experiments-4-cross-ticker--7-reward-design)
+  (NVDA — the verdict *flips* vs AAPL), and a [reward-design comparison](#comparative-experiments-4-cross-ticker--7-reward-design)
+  (basic ΔV vs full risk/cost-adjusted).
+- **Explainability** — every recommendation carries a **confidence** (softmax) and a
+  **gradient-saliency feature attribution** ("which features drove this decision").
+- **Proper model selection** — **best-by-validation-Sharpe checkpointing** (early-stopping)
+  with run metadata, not just final-epoch weights.
+- **Research depth** — falsifiable hypotheses with verdicts, an OAT sensitivity sweep on
+  validation, a feature-correlation heatmap, and an honest overfitting analysis (in-sample
+  ~$344k vs out-of-sample ≈ Buy & Hold; validation peaks at episode 59).
+- **Engineering** — a strict SDK facade, **100% statement+branch coverage**, ≤150-line
+  modules, CI + pre-commit gates, seeded bit-for-bit reproducibility, and an installable
+  wheel (§14).
+
+**What we learned.** A single-ticker backtest can't establish skill — the same agent beats
+Buy & Hold on NVDA and loses on AAPL. Reward design changes the *character* of the policy
+(trade count, drawdown, win-rate), not just the number. And the honest deliverable here is a
+correct, analysable RL **system** with a truthfully-reported negative result — not a profitable
+trader. **Past ≠ future.**
 
 ## Cost of AI-assisted development
 
@@ -549,7 +575,7 @@ violations, ≤150 code lines/file, secret-scan, uv-only.
 
 ## Tests
 
-**171 tests · 100% statement + branch coverage** (the suite *fails* under 85%). Run:
+**177 tests · 100% statement + branch coverage** (the suite *fails* under 85%). Run:
 
 ```bash
 uv run pytest tests/ --cov=src --cov-report=term-missing
@@ -575,9 +601,9 @@ Latest run:
 ```text
 $ uv run pytest tests/ -q
 ...
-TOTAL                                     877      0    126      0   100%
+TOTAL                                     903      0    132      0   100%
 Required test coverage of 85% reached. Total coverage: 100.00%
-171 passed in 4.54s
+177 passed in 5.97s
 ```
 
 ## Project structure
