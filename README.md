@@ -150,7 +150,27 @@ input (B, 30 days, 10 features)
 ```
 Conv1D convolves the **time** axis (features are channels, never convolved
 across). The Dueling split learns "how good is this state" separately from
-"which action is relatively better".
+"which action is relatively better" — useful when **Hold is often the sensible
+action** and the per-action Q-values barely differ: V(s) is still learned
+efficiently without sampling every (s, a).
+
+**The learning rule (Bellman target + MSE).** The policy net is trained to satisfy
+the Bellman optimality equation. For a transition `(sₜ, aₜ, rₜ, sₜ₊₁, done)`:
+
+```
+y = rₜ + γ · maxₐ' Q(sₜ₊₁, a'; θ⁻) · (1 − done)        # the target
+loss = ( Q(sₜ, aₜ; θ) − y )²                            # MSE, minimised by Adam
+```
+
+- **`Q(s, a; θ)`** — the online (policy) network's value of action `a` in state `s`, parameters `θ` ([agent.py](src/tradedqn/model/agent.py) `learn`).
+- **`y`** — the bootstrapped target: immediate reward plus the discounted best next-state value.
+- **`rₜ`** — the reward `ΔV − C − S + λ·Sharpe` (see below).
+- **`γ`** — discount factor (`config.training.gamma` = 0.95); weights future reward.
+- **`maxₐ' Q(sₜ₊₁, a'; θ⁻)`** — the **target** network's best next-state value; **`θ⁻`** is a frozen copy of `θ`, synced every `target_update_frequency` steps for stability.
+- **`(1 − done)`** — zeroes the future term at the episode's last step.
+
+This is the **plain-DQN** target (`target(next).max()`); Double-DQN is a deliberately
+deferred extension (see Conclusions / References).
 
 ## The §5 gatekeeper
 
@@ -387,9 +407,13 @@ the $10k stake to **~$344k in-sample**: a stark in-sample/out-of-sample gap that
 is the real finding (see Conclusions).
 
 Numbers from [`results/analysis/backtest_metrics.json`](results/analysis/backtest_metrics.json);
-reproduce with `uv run python scripts/generate_results.py --episodes 300`. The run is
-**seeded** (`config.seed`) — Python/NumPy/Torch RNGs are fixed, so a fresh run on the
-same machine reproduces these numbers exactly (verified across two independent runs).
+reproduce with `uv run python scripts/generate_results.py --episodes 300`.
+**Fully reproducible by design** — the run is seeded (`config.seed`) and pinned on two axes
+a naïve seed misses: (1) **Torch is forced single-threaded + deterministic** (`seeding.py`),
+because multi-threaded CPU float-accumulation order varies run-to-run; (2) the **exact input
+data is committed** as `data/raw/*.parquet` (+ CSV fallback), because a fresh `yfinance`
+pull drifts ~1e-4 and chaotic RL training amplifies that into a different result. With both,
+a **fresh `git clone` reproduces these numbers bit-for-bit** (verified on a clean checkout).
 <!-- RESULTS:END -->
 
 > **Read the equity curve honestly.** The question is **not** "does the line go
@@ -595,6 +619,26 @@ Every layer the brief (§9) lists has a test (TDD, RED→GREEN→REFACTOR):
 | Backtest + metrics, inference, SDK | `test_backtest`, `test_metrics`, `test_inference`, `test_sdk` |
 | Seeding / reproducibility | `test_seeding` |
 | Terminal + GUI logic | `test_menu`, `test_gui_controller`, `test_charts`, `test_format` |
+
+**RED → GREEN → REFACTOR — two worked examples (§9):**
+
+1. **`RewardFunction`** (`env/reward.py`, `test_reward.py`). **RED:** wrote
+   `test_components_are_fraction_units` + `test_hold_with_no_fees_is_pure_return`
+   *first* — they failed (no `RewardFunction` yet). **GREEN:** implemented
+   `compute()` returning `(ΔV − C − S)/capital + λ·Sharpe` until both passed.
+   **REFACTOR:** extracted the rolling-Sharpe deque + the `std == 0` guard into a
+   helper and exposed the reward *components* in `info` for transparency
+   (`test_lambda_zero_removes_sharpe_term` locks the λ knob) — tests stayed green.
+2. **Look-ahead-safe normalizer** (`features/dataset.py`, `test_dataset.py`). **RED:**
+   wrote `test_uses_train_stats_and_clips_future_highs` first — asserting the
+   normalizer fit on **train** clips a future val/test high to ≤ 1.0; it failed
+   against a naive fit-on-all version. **GREEN:** `MinMaxNormalizer.fit(train).transform(...)`
+   with clipping. **REFACTOR:** shared the transform across train/val/test and added
+   the chronological-order assertion — the leakage guard the whole backtest depends on.
+
+(The reverse also happened post-review: a flat-price input crashed the indicators with
+`pd.NA.astype(float)` despite 100% coverage → added `TestZeroDivisorSafety` (RED), switched
+`pd.NA`→`np.nan` (GREEN), applied the guard across all four indicators (REFACTOR).)
 
 Latest run:
 

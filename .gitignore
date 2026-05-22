@@ -27,13 +27,15 @@ venv/
 .DS_Store
 Thumbs.db
 
-# Data caches — the parquet cache is re-fetchable from the API, not source.
+# Data caches. The committed parquet cache + CSV fallback pin the EXACT data so
+# results reproduce bit-for-bit (a fresh yfinance pull drifts by ~1e-4, which
+# chaotic RL training amplifies). Delete data/raw/*.parquet to force a live pull.
 data/cache/
 data/raw/
 *.parquet
-# ...but the small CSV fallback IS committed for offline reproducibility (§4).
 !data/raw/
 !data/raw/*.csv
+!data/raw/*.parquet
 
 # Trained models / checkpoints (large, regenerable from training).
 # We serialize with torch.save (state_dict), never arbitrary objects.
