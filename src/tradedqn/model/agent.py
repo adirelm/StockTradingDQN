@@ -30,6 +30,7 @@ class DQNAgent:
         self.min_replay = int(cfg.training.min_replay_before_train)
         self.target_update_frequency = int(cfg.training.target_update_frequency)
         self.train_frequency = int(getattr(cfg.training, "train_frequency", 1))
+        self.double_q = bool(getattr(cfg.training, "double_q", False))  # Double-DQN target (§6 extension)
         self.epsilon = float(cfg.training.epsilon_start)
         self.epsilon_min = float(cfg.training.epsilon_min)
         self.epsilon_decay = float(cfg.training.epsilon_decay)
@@ -93,7 +94,11 @@ class DQNAgent:
         actions, rewards, dones = actions.to(self.device), rewards.to(self.device), dones.to(self.device)
         q_sa = self.policy(states).gather(1, actions.unsqueeze(1)).squeeze(1)
         with torch.no_grad():
-            max_next = self.target(next_states).max(dim=1).values
+            if self.double_q:  # online net SELECTS the next action, target net EVALUATES it
+                next_actions = self.policy(next_states).argmax(dim=1, keepdim=True)
+                max_next = self.target(next_states).gather(1, next_actions).squeeze(1)
+            else:  # vanilla DQN: target net both selects and evaluates (max)
+                max_next = self.target(next_states).max(dim=1).values
             target = rewards + self.gamma * max_next * (1.0 - dones)
         loss = nn.functional.mse_loss(q_sa, target)
         self.optimizer.zero_grad()

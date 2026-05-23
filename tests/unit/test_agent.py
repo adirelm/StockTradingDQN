@@ -60,6 +60,16 @@ class TestLearn:
         outcomes = [agent.learn() is not None for _ in range(6)]
         assert outcomes == [False, False, True, False, False, True]
 
+    def test_double_dqn_target_path_learns(self, tiny_cfg):
+        from tradedqn.model.agent import DQNAgent
+
+        tiny_cfg.training.double_q = True  # online net selects, target net evaluates (§6 extension)
+        agent = DQNAgent(tiny_cfg)
+        assert agent.double_q is True
+        fill_replay(agent, 8)
+        loss = agent.learn()
+        assert isinstance(loss, float) and np.isfinite(loss)
+
     def test_epsilon_decays_with_floor(self, dqn_agent):
         dqn_agent.epsilon = 1.0
         dqn_agent.decay_epsilon()
