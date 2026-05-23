@@ -1,0 +1,13 @@
+%% Deployment / operational architecture (§20.1) — single-host desktop/CLI app.
+%% No server/container; CPU-only default (MPS/CUDA-capable); keyless; offline after first fetch.
+flowchart TB
+  subgraph HOST["Single host — developer/grader machine (CPU, MPS-capable)"]
+    subgraph VENV["uv-managed env · tradedqn wheel"]
+      UI["Terminal menu / Tkinter+matplotlib GUI"]
+      SDK["TradingSDK (single entry point)"]
+      ENG["engine: features · env · model · services"]
+      STORE[("config/ · data/raw/*.parquet (committed)<br/>results/ — checkpoints · charts · json")]
+      UI --> SDK --> ENG --> STORE
+    end
+  end
+  ENG -. "cache-miss only, via §5 gatekeeper" .-> YF["Yahoo Finance API<br/>(external · rate-limited · keyless)"]

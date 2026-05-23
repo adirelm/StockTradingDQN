@@ -45,6 +45,35 @@ point downward only — a UI never imports an engine module; the SDK is the seam
 - **ADR (PRD_env D3)** — reward `r = ΔV − C − S + λ·Sharpe` (risk/cost-adjusted, not raw profit).
 - **ADR (PRD_gui)** — Tkinter + matplotlib GUI (stdlib + existing dep) over Streamlit.
 
+## Deployment / operational architecture (§20.1)
+No server, container, or network service — TradeDQN deploys as a **single-host
+desktop/CLI app**: an installable wheel (`uv build` → `dist/tradedqn-1.0.0-py3-none-any.whl`)
+or run-in-place via `uv run main.py [gui]`. It runs **CPU-only by default**
+(device-parameterised, MPS/CUDA-capable), needs **no credentials** (Yahoo data is
+public/keyless), and is **offline after the first fetch** (the committed parquet
+cache serves every subsequent run).
+
+```mermaid
+flowchart TB
+  subgraph HOST["Single host — developer/grader machine (CPU, MPS-capable)"]
+    subgraph VENV["uv-managed env · tradedqn wheel"]
+      UI["Terminal menu / Tkinter+matplotlib GUI"]
+      SDK["TradingSDK (single entry point)"]
+      ENG["engine: features · env · model · services"]
+      STORE[("config/ · data/raw/*.parquet (committed)<br/>results/ — checkpoints · charts · json")]
+      UI --> SDK --> ENG --> STORE
+    end
+  end
+  ENG -. "cache-miss only, via §5 gatekeeper" .-> YF["Yahoo Finance API<br/>(external · rate-limited · keyless)"]
+```
+
+**Runtime:** one process, single-threaded (§15). **Persistence:** local filesystem
+only (parquet cache, checkpoints, result artifacts) — no DB, no secrets store.
+**Install/run:** `uv sync --dev` then `uv run main.py` (CLI) or `uv run main.py gui`
+(dashboard); or install the built wheel. **Scale-out path:** a multi-ticker sweep
+fans per-ticker training across a `multiprocessing.Pool`, each worker with its own
+gatekeeper (see below). Mermaid source: [diagrams/deployment.mmd](diagrams/deployment.mmd).
+
 ## Concurrency & thread safety (§15)
 The pipeline is **single-threaded by design**. Cost centres: **CPU-bound**
 (PyTorch forward/backward in training & inference) and **I/O-bound** (one
