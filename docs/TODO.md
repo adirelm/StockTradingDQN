@@ -21,7 +21,9 @@ implemented + a test asserting it + gates green (ruff, ≤150 lines, coverage �
 Status snapshot: **178 tests / 100% coverage** (statement + branch), ruff clean,
 ≤150 code lines/file, secret-scan clean, wheel imports from a clean build.
 
-## Pre-submission review remediation (guideline-audit findings)
+## Post-review remediation log (guideline-audit findings)
+This section is a remediation record, not open work — every item below is already
+closed. It logs fixes made after the pre-submission audit so the trail is auditable.
 (Detailed findings live in the local review notes, kept outside the submission.)
 | Item | Status |
 |---|---|
@@ -44,5 +46,5 @@ Status snapshot: **178 tests / 100% coverage** (statement + branch), ruff clean,
 
 ## Known limitations (deliberate, documented)
 - DQN underperforms Buy & Hold out-of-sample (overfits) — reported honestly; not the goal.
-- No remote/PRs yet (solo repo); the review loop is human PRD-approval + AI-output review.
+- Remote on GitHub; dependabot PRs open, no human feature PRs (solo dev); review loop is human PRD-approval + AI-output review.
 - Single-threaded by design (see PLAN concurrency).

@@ -13,7 +13,7 @@ The model is deliberately small — a Conv1D Dueling DQN over a 30×10 window.
 
 | Item | Value | Notes |
 |---|---|---|
-| Network params | ~tens of thousands | Conv1D 10→32→64 + Dense(128) + two heads (3 / 1) |
+| Network params | **253,604** (measured) | Conv1D 10→32→64 + Dense(128) + two heads (3 / 1); `sum(p.numel())` on `DuelingDQN.from_config` |
 | State tensor | 30 × 10 float32 = 1.2 KB | one window |
 | Replay buffer | `replay_capacity` × (2 states + scalars) | 10 000 × ~2.5 KB ≈ 25 MB cap |
 | Device | CPU / Apple MPS | the net is tiny; GPU is not required |
@@ -40,8 +40,9 @@ Built with Claude Code over a **10-phase, PRD-first** workflow (see
 
 - **Token usage** is dominated by *context*, not the prompt you type: every
   turn re-sends the growing conversation + files in scope. Order-of-magnitude
-  for a project this size (10 phases, ~700 lines of source + ~700 of tests +
-  docs, with re-reads and gate runs): **single-digit millions of tokens**,
+  for a project this size (10 phases, **~1,580 code lines of source + ~1,260 of
+  tests** — measured, non-blank/non-`#` lines per `scripts/check_file_sizes.sh`
+  — plus docs, with re-reads and gate runs): **single-digit millions of tokens**,
   reduced substantially by prompt caching. Not instrumented precisely — stated
   as an estimate, not a measurement.
 

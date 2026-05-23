@@ -8,12 +8,15 @@ Turn raw OHLCV into the normalized **market** features the DQN state is built
 from, split chronologically with **no look-ahead / no test-set leakage**.
 
 ## Key design decision — 8 market features here, 2 portfolio features later
-The brief's 10-feature state (§4) = **8 market features** (computable from OHLCV) +
-**2 portfolio features** (`position`, `unrealized_pnl`). The portfolio features
-are path-dependent on the agent's own actions, so they are **injected by the
-`TradingEnvironment` at runtime (Phase 3)** — precomputing them would be both
-meaningless and a leak. Phase 2 therefore produces the **8 market columns**
-(config `features.names[:8]`):
+The state has **10 channels** = **8 market features** (computable from OHLCV) +
+**2 portfolio features** (`position`, `unrealized_pnl`). This is a
+standard-quant feature set **inspired by** the deck's §4 list, **not a literal
+1:1 reproduction** of it — see the reconciliation table below for how each
+implemented channel relates to a §4 feature, and which §4 items we cover only
+by proxy. The portfolio features are path-dependent on the agent's own actions,
+so they are **injected by the `TradingEnvironment` at runtime (Phase 3)** —
+precomputing them would be both meaningless and a leak. Phase 2 therefore
+produces the **8 market columns** (config `features.names[:8]`):
 
 | # | feature | formula (sketch) |
 |---|---|---|
@@ -25,6 +28,27 @@ meaningless and a leak. Phase 2 therefore produces the **8 market columns**
 | 6 | bb_pct | Bollinger %B over `ma_period` (±`bb_num_std`·σ band) |
 | 7 | vwap_dist | `Close / rolling-VWAP(ma_period) − 1` |
 | 8 | volume_norm | `Volume / SMA(Volume, ma_period) − 1` |
+
+## Reconciliation against the deck's §4 list (honest mapping)
+The deck §4 enumerates 10 features (price return, normalised price, High-Low
+range, volume change, ratio-to-MA, volatility, RSI, MACD, position,
+cash/holding exposure). Our implementation does **not** reproduce that list 1:1;
+the mapping below is the honest correspondence.
+
+| Implemented channel | Deck §4 feature it covers | Relationship |
+|---|---|---|
+| log_return | price return | direct |
+| rsi_14 | RSI | direct |
+| macd / macd_signal / macd_hist | MACD | deck's single MACD, expanded to the 3 standard MACD channels |
+| volume_norm | volume change | proxy: `Volume / SMA(Volume) − 1` |
+| vwap_dist | ratio-to-MA | proxy: VWAP distance instead of close-to-MA ratio |
+| bb_pct | (extra: Bollinger %B) | not in §4; also stands in for normalised-price / volatility |
+| position | position | direct |
+| unrealized_pnl | cash/holding exposure | related, not identical (PnL vs. cash-vs-holding capacity) |
+
+**Deck §4 items not implemented directly:** normalised price, High-Low range,
+volatility, ratio-to-MA (proxied by `vwap_dist`), cash/holding exposure
+(proxied by `unrealized_pnl`). MACD is implemented as 3 channels rather than 1.
 
 ## Scope (this phase)
 1. **`features/indicators.py`** — pure functions for the math (log_return, SMA,

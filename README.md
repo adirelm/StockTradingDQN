@@ -12,6 +12,19 @@ with a **Dueling Deep Q-Network** — a neural network that *approximates* Q —
 because the trading state space (a 30-day × 10-feature window) is effectively
 infinite and can't fit in a table.
 
+## Quick reference (§19)
+
+| Task | Command |
+|---|---|
+| Install | `uv sync --dev` |
+| Run terminal UI | `uv run main.py` |
+| Run GUI dashboard | `uv run main.py gui` |
+| Tests + coverage | `uv run pytest tests/ --cov=src/tradedqn --cov-report=term-missing` |
+| Lint | `uv run ruff check src/ tests/ scripts/ main.py` |
+| Regenerate results | `uv run python scripts/generate_results.py` (charts → `results/`) |
+| Headline result | AAPL test, 300 ep: **−17.5%** vs Buy & Hold −16.5%, Sharpe −1.66 (honestly negative) |
+| Stack | PyTorch Dueling Conv1D DQN · Tkinter+matplotlib GUI · `uv` · 178 tests, 100% coverage |
+
 ## Objective
 
 Show the progression **finite Q-table → Bellman update → neural approximation
@@ -25,9 +38,11 @@ benchmark — all behind one SDK with both a terminal and a GUI.
 - **Data** — `DataClient` pulls OHLCV from Yahoo Finance (AAPL, 2020-01-01→2023-01-01)
   with a **rate-limit gatekeeper** (§5) and a local **parquet cache** (`data/raw/`,
   snappy) + a `{ticker}.csv` fallback — offline, reproducible.
-- **Features** — the brief's 8 market features (`log_return`, `rsi_14`, `macd`,
+- **Features** — 8 market features (`log_return`, `rsi_14`, `macd`,
   `macd_signal`, `macd_hist`, `bb_pct`, `vwap_dist`, `volume_norm`), min-max
-  normalized *fit-on-train* (no look-ahead), chronological 70/15/15 split.
+  normalized *fit-on-train* (no look-ahead), chronological 70/15/15 split. A
+  standard-quant set *inspired by* the brief's §4 list (not a literal 1:1 — see
+  the mapping in [docs/PRD_features.md](docs/PRD_features.md)).
 - **Environment** — `TradingEnvironment`: 30×10 state (8 market + 2 portfolio
   channels `position`, `unrealized_pnl`), Sell/Hold/Buy, reward
   `rₜ = ΔVₜ − Cₜ − Sₜ + λ·Sharpeₜ`.
@@ -44,15 +59,15 @@ expressed in this project:
 
 | Lecture concept | Deck slides | Where it lives here |
 |---|---|---|
-| Q-Table → **function approximation** (why a table can't span continuous, multi-feature windows) | 3–6, 14–15 | [Concept Q&A #2](#concept-qa-13); [network.py](src/tradedqn/model/network.py) |
-| **RL formulation** — Agent/Environment/State/Action/Reward/Episode/Policy/Return | 7–10 | [RL mapping](#objective) + [Concept Q&A](#concept-qa-13); [trading_env.py](src/tradedqn/env/trading_env.py) |
+| Q-Table → **function approximation** (why a table can't span continuous, multi-feature windows) | 3–6, 14–15 | [Concept Q&A #2](#concept-qa); [network.py](src/tradedqn/model/network.py) |
+| **RL formulation** — Agent/Environment/State/Action/Reward/Episode/Policy/Return | 7–10 | [RL mapping](#objective) + [Concept Q&A](#concept-qa); [trading_env.py](src/tradedqn/env/trading_env.py) |
 | **Data → state tensor** (the exact 30×10 input shape) | 11–13 | [Dataset (§4)](#dataset-4); [trading_env.py](src/tradedqn/env/trading_env.py) `assemble_state` |
 | **Dueling DQN** — value & advantage streams, Q-values | 16–21 | [Network](#network--dueling-conv1d-dqn); `Q=V+A−mean(A)` in [network.py](src/tradedqn/model/network.py) |
 | **Exploration & stabilization** — ε-greedy, experience replay, target network | 22–24 | [agent.py](src/tradedqn/model/agent.py), [replay_buffer.py](src/tradedqn/model/replay_buffer.py) |
 | **Full training cycle** — reset/step, transitions, batch sampling, Bellman target, loss, weight update | 25 | [training.py](src/tradedqn/services/training.py), [agent.py](src/tradedqn/model/agent.py) `learn` |
 | **Backtest & results** — equity curve, Buy & Hold, Sharpe, max drawdown, win rate | 26–27 | [Results & analysis](#results--analysis); [backtest.py](src/tradedqn/services/backtest.py), [metrics.py](src/tradedqn/services/metrics.py) |
 | **Tests & OOP architecture** — system & class diagrams, engineering quality | 28–29 | [OOP layers](#oop-layers-responsibility-separation), [Tests](#tests) |
-| **Theory** — the agent learns a **decision policy**, not a price forecast | 30–31 | [Objective](#objective), [Concept Q&A #1](#concept-qa-13) |
+| **Theory** — the agent learns a **decision policy**, not a price forecast | 30–31 | [Objective](#objective), [Concept Q&A #1](#concept-qa) |
 
 ## Architecture (data flow)
 
@@ -572,7 +587,7 @@ But (2) the **spread is large** (−2.5 % to −24.7 %, a 22-point swing; σ ≈
 (−16.5 %). The honest reading: the qualitative conclusion is seed-robust, the exact
 percentage is not. This is exactly why a one-seed backtest shouldn't be over-read.
 
-## Concept Q&A (§13)
+## Concept Q&A
 
 The twelve questions the brief requires the README to answer, with pointers to the code:
 
@@ -653,7 +668,7 @@ PRD-first, 10 phases, the decisions and the AI-rework tax — is in
 | Performance efficiency | small net, CPU-fine; cache avoids refetch | `docs/COST_ANALYSIS.md` |
 | Usability | terminal + GUI, both error-safe | `test_menu`, `test_gui_controller` |
 | Compatibility | stdlib-only GUI (Tkinter), no new GUI dep; CSV/Yahoo data interop; one config consumed by every interface | `gui/`, `data/client.py`, `config/config.yaml` |
-| Portability | pure-Python, `uv`-locked install; CPU/MPS device-agnostic; OS-independent paths | `uv.lock`, `model/agent.py` (`device`), `config.assert_in_project` |
+| Portability | pure-Python, `uv`-locked install; CPU by default (device-parameterised); OS-independent paths | `uv.lock`, `model/agent.py` (`device`), `config.assert_in_project` |
 
 **Gates** (pre-commit + CI): TDD with **100% coverage** (gate ≥85%), zero ruff
 violations, ≤150 code lines/file, secret-scan, uv-only.
@@ -663,7 +678,7 @@ violations, ≤150 code lines/file, secret-scan, uv-only.
 **178 tests · 100% statement + branch coverage** (the suite *fails* under 85%). Run:
 
 ```bash
-uv run pytest tests/ --cov=src --cov-report=term-missing
+uv run pytest tests/ --cov=src/tradedqn --cov-report=term-missing
 ```
 
 Every layer the brief (§9) lists has a test (TDD, RED→GREEN→REFACTOR):
@@ -738,7 +753,7 @@ Conventions for changes (the project enforces them via pre-commit + CI):
 - **No hardcoded values** — everything tunable goes in `config/config.yaml`.
 - **uv only** — `uv sync --dev`; run everything via `uv run`.
 - Run the full gate before committing:
-  `uv run pytest tests/ --cov=src --cov-report=term-missing && uv run ruff check src/ tests/ scripts/ main.py`.
+  `uv run pytest tests/ --cov=src/tradedqn --cov-report=term-missing && uv run ruff check src/ tests/ scripts/ main.py`.
 
 **Review process.** This is a single-author project, so there is no pull-request
 flow — development lands on `main`. The role peer review plays on a team is

@@ -69,10 +69,10 @@ Enforced by `scripts/check_file_sizes.sh` (pre-commit + CI).
 
 ### 2. Test-Driven Development (TDD)
 Write tests BEFORE implementation. RED → GREEN → REFACTOR.
-85%+ coverage gate. Run: `uv run pytest tests/ --cov=src --cov-report=term-missing`
+85%+ coverage gate. Run: `uv run pytest tests/ --cov=src/tradedqn --cov-report=term-missing`
 
 ### 3. Object-Oriented Programming (OOP)
-Inheritance over duplication (e.g. `BaseAgent → DQNAgent → DuelingDQNAgent`).
+Inheritance over duplication (e.g. `RolloutService → TrainingService / BacktestService`; `DuelingDQN(nn.Module)` with the dueling head as a config flag, not a subclass).
 The **SDK is the single entry point** for all business logic. UIs (terminal +
 GUI) call the SDK; they never touch training / data / network code directly.
 
@@ -89,7 +89,7 @@ editing source?"* Yes → config. No → keep local.
 If a pattern appears twice, extract a utility or base-class method.
 
 ### 6. Linting — Zero Ruff Violations
-`uv run ruff check src/ tests/ analysis/ scripts/` → zero errors before commit.
+`uv run ruff check src/ tests/ scripts/ main.py` → zero errors before commit.
 
 ### 7. Package Manager — UV Only
 `uv` exclusively. `uv sync --dev` to install, `uv run …` to run.

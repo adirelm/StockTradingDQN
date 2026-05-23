@@ -7,7 +7,10 @@ booklet. Lowest-judgment layer → built first to prove the TDD loop.
 
 ## Goal
 Provide reproducible, offline-capable OHLCV data to the rest of the pipeline,
-without ever hammering Yahoo Finance.
+without ever hammering Yahoo Finance. Raw pulls are cached as **Parquet** (with a
+per-ticker **CSV fallback**) under `data/raw` and committed/pinned to the repo, so
+a grader can run the project fully offline and deterministically — no live network
+call and no API key required.
 
 ## Scope (this phase only)
 1. **Config loader** — `src/tradedqn/config.py`: parse `config/config.yaml`
@@ -15,8 +18,11 @@ without ever hammering Yahoo Finance.
    root; fail loudly on a malformed root.
 2. **Rate-limit gatekeeper** — `src/tradedqn/data/gatekeeper.py`
    (`RateLimitGatekeeper`): enforce a minimum interval between calls **and** a
-   max-calls-per-rolling-window cap. Injectable clock/sleep so tests use no real
-   time. `acquire(wait=False)` raises `RateLimitError`; `wait=True` blocks.
+   max-calls-per-rolling-window cap, with a bounded retry on transient failures.
+   Injectable clock/sleep so tests use no real time. The public entry point is
+   `execute(api_call, *args, **kwargs)` — it throttles, runs the call, retries up
+   to `max_retries` times, and logs each attempt. The underlying permit primitive
+   `acquire(wait=False)` raises `RateLimitError`; `acquire(wait=True)` blocks.
 3. **DataClient** — `src/tradedqn/data/client.py`: `get_ohlcv(...)` is
    **cache-first** — returns the local **parquet** if present; on a miss it calls
    the live fetcher *through the gatekeeper*, validates OHLCV columns, writes the
@@ -30,7 +36,9 @@ Feature engineering / indicators (Phase 2), windowing & the env (Phase 3).
 ```
 load_config(path="config/config.yaml") -> Config
 RateLimitGatekeeper(min_interval_seconds, max_calls_per_window, window_seconds,
-                    clock=time.monotonic, sleep=time.sleep).acquire(wait=True) -> float
+                    max_retries=3, clock=time.monotonic, sleep=time.sleep)
+    .execute(api_call, *args, **kwargs) -> object   # throttle + retry + log (primary)
+    .acquire(wait=True) -> float                     # underlying permit; returns seconds waited
 DataClient(cache_dir, gatekeeper=None, fetch_fn=_yf_download)
     .get_ohlcv(ticker, start, end, interval="1d", force_refresh=False) -> DataFrame
 ```

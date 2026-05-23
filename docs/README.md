@@ -22,7 +22,12 @@ Build order (one PRD + one TDD commit per phase):
 Each PRD is approved by the human (architect) **before** code is generated
 against it — `CLAUDE.md` §1.4 contract.
 
-Umbrella documents in this folder: [`PRD.md`](PRD.md) (project-wide requirements),
-[`PLAN.md`](PLAN.md) (architecture + ADRs + concurrency), [`TODO.md`](TODO.md)
-(phased tasks + DoD), [`PROMPTS.md`](PROMPTS.md) (prompt log), and
-[`COST_ANALYSIS.md`](COST_ANALYSIS.md) (§11 token/cost).
+Umbrella documents in this folder: [`PRD.md`](PRD.md) (project-wide requirements,
+§2.2.a), [`PLAN.md`](PLAN.md) (architecture + ADRs + concurrency, §2.2.b),
+[`TODO.md`](TODO.md) (phased tasks + DoD, §2.2.c), [`PROMPTS.md`](PROMPTS.md)
+(prompt log), [`COST_ANALYSIS.md`](COST_ANALYSIS.md) (§11 token/cost), and
+[`ADR-001-config-format.md`](ADR-001-config-format.md) (YAML config decision).
+
+Reading order for a grader: root [`README.md`](../README.md) → [`PRD.md`](PRD.md)
+→ the layered `PRD_*.md` (phases 1–9 above) → [`PROMPTS.md`](PROMPTS.md) →
+[`COST_ANALYSIS.md`](COST_ANALYSIS.md).

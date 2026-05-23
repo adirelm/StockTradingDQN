@@ -14,7 +14,7 @@ inference (latest window → recommended action).
 - `services/backtest.py` — `BacktestService(env, agent).run() -> dict`:
   greedy rollout, tracks equity + prices per step, counts trades and computes
   win-rate over completed round-trips, builds the Buy & Hold benchmark.
-- `services/inference.py` — `InferenceService(agent, action_names).recommend(state)`
+- `services/inference.py` — `InferenceService(agent, names, feature_names).recommend(state)`
   → `{action, action_index, q_values}` (greedy argmax of the policy Q-vector);
   `action_names(cfg)` helper orders names by their config index.
 
@@ -32,6 +32,9 @@ inference (latest window → recommended action).
   wins if exit equity > entry equity); `0` if no round-trips. *Documented
   simplification: round-trip P&L, not per-day.*
 - Benchmark = `initial_capital · price_t / price_0` (buy-and-hold over the slice).
+- `benchmark_return = total_return(benchmark_curve)` — Buy & Hold total return
+  over the same period (`benchmark_curve[-1]/benchmark_curve[0] − 1`); the
+  fair baseline the strategy's `total_return` is judged against.
 
 ## Acceptance criteria (tests assert)
 - metrics: `total_return([100,110])==0.1`; `max_drawdown([100,120,90,150])==0.25`;
@@ -44,3 +47,11 @@ inference (latest window → recommended action).
 
 ## Gates
 ≤150 code lines/file · TDD · coverage ≥85% · ruff clean.
+
+## Honest result + disclaimer
+On the AAPL test split (300 ep) the DQN **underperformed Buy & Hold**:
+`total_return` −17.5% vs `benchmark_return` −16.5%, `sharpe_ratio` −1.66 — it
+lost money and lagged the baseline. We report this as a legitimate finding, not
+a failure: the backtest harness measured a real, honestly-negative result, which
+is exactly what it is for. Past performance ≠ future returns; this is a teaching
+tool for the RL pipeline, **not investment advice**.

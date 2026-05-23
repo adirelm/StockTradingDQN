@@ -1,6 +1,6 @@
 # PRD — Phase 3: TradingEnvironment (state, actions, reward)
 
-**Phase:** 3 of 10 · **Status:** awaiting design sign-off · Covers `REQUIREMENTS.md`
+**Phase:** 3 of 10 · **Status:** approved-to-build · built & shipped (v1.0.0) · Covers `REQUIREMENTS.md`
 **B6, B7, B10, B18** (state) and feeds the agent (Phase 4).
 
 ## Goal
@@ -39,9 +39,11 @@ the agent's *current* scalars, **broadcast across all 30 rows** of the window
 reward; add risk shaping later in experiments.
 
 ## No-look-ahead contract
-State at decision time uses **only** feature rows strictly before the action's
-execution day. A test asserts the state window never includes the current
-step's not-yet-known row.
+No future look-ahead: at decision day `t` the state window ends at **and
+includes** day `t` (feature rows `t−window+1 … t`), and the trade executes at
+`prices[t]` — the bar the agent observes. The *next* day's price (`prices[t+1]`)
+is the step's outcome, never part of the observed state. A test asserts the
+window's last row is day `t`'s row, never the not-yet-observed `t+1` row.
 
 ## Public API
 ```

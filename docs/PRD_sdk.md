@@ -14,6 +14,7 @@ prepare_data()  DataClient → Preprocessor (8 market feats) → chronological_s
                   {train,validation,test}: (normalized features, raw close prices)
 train(episodes) build TradingEnvironment on TRAIN → TrainingService → history
 backtest(split) build env on the split (default TEST/held-out) → BacktestService
+compare(episodes) train Dueling + plain DQN on TRAIN → {arch: history} (§9 ablation)
 recommend(split) latest 30×10 window (flat portfolio) → InferenceService
 save_brain / load_brain  agent checkpoint, path-guarded (§13) + weights_only (§7)
 ```
@@ -31,11 +32,19 @@ save_brain / load_brain  agent checkpoint, path-guarded (§13) + weights_only (�
 ## Public API
 ```
 TradingSDK(config_path=None, cfg=None, data_client=None, agent=None)
-  .prepare_data() -> {split: n_rows}
-  .train(episodes=None) -> list[dict]      # defaults to cfg.training.episodes
+  .prepare_data(ticker=None, start=None, end=None) -> {split: n_rows}
+                                           # None keeps the config default; pass to override symbol/range
+  .train(episodes=None, on_episode=None) -> list[dict]
+                                           # episodes defaults to cfg.training.episodes;
+                                           # on_episode(record) streams each per-episode dict (GUI live training)
   .backtest(split="test") -> dict
-  .recommend(split="test") -> {action, action_index, q_values}
-  .save_brain(path); .load_brain(path)
+  .compare(episodes=None, on_episode=None) -> {arch_name: list[dict]}
+                                           # §9 Dueling-vs-plain ablation: trains both arches on the same data;
+                                           # on_episode(arch_name, record) streams live progress (GUI/CLI button)
+  .recommend(split="test") -> {action, action_index, q_values,
+                               names, confidence, top_features}
+                                           # confidence = softmax over Q; top_features = saliency-ranked channels (§8)
+  .save_brain(path, metadata=None); .load_brain(path)
 ```
 
 ## Acceptance criteria (tests assert; injected fake fetcher, no network)
@@ -43,7 +52,8 @@ TradingSDK(config_path=None, cfg=None, data_client=None, agent=None)
   backtest before it raises a clear error.
 - splits are chronological & disjoint; features normalized in [0,1], prices raw.
 - `train(episodes=1)` returns a 1-element history; `backtest()` returns the full
-  summary dict; `recommend()` returns a valid action + 3 Q-values.
+  summary dict; `recommend()` returns a valid action + 3 Q-values plus its
+  confidence (softmax) and the top saliency-ranked features (§8).
 - `save_brain`→`load_brain` into a fresh SDK reproduces the greedy recommendation.
 - path guard: a relative path escaping the project root is refused.
 

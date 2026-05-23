@@ -28,7 +28,7 @@ grades this) rather than one bulk dump:
 | 7 | PRD_sdk | `TradingSDK` facade (the §4 mandate) |
 | 8 | PRD_terminal | terminal menu (built before the GUI, lecturer's order) |
 | 9 | PRD_gui | Tkinter + matplotlib dashboard |
-| 10 | PRD_docs | this README/PROMPTS/cost analysis + diagrams |
+| 10 | root README.md | this README/PROMPTS/cost analysis + diagrams |
 
 ## Architect decisions the AI did not get to make (ADRs)
 

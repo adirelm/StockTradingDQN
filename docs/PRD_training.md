@@ -17,25 +17,53 @@ checkpointing.
   Adam optimizer; ε-greedy `act`; `learn` = sample → Bellman target via target
   net → MSE → backprop; `decay_epsilon`; `save/load` checkpoints with
   `weights_only=True` (tensors only, no arbitrary-code execution on load —
-  carries the §7 security lesson from Assignment 1).
-- `services/training.py` — `TrainingService.train(episodes)`: episode loop
-  (reset → act → step → remember → learn), epsilon decay per episode, returns a
-  history of per-episode reward / final value / epsilon / mean loss.
+  carries the §7 security lesson from Assignment 1). `learn` is **gated by
+  `train_frequency`** (config `4`): it counts env-steps and no-ops (returns
+  `None`) until the replay holds `min_replay_before_train` (config `500`)
+  transitions *and* the step index is a multiple of `train_frequency` —
+  optimising every N env-steps is standard DQN and far faster than every step.
+  `save` also persists a `metadata` dict (carries the §6 best-checkpoint
+  record); `load` restores it onto `agent.metadata`.
+- `services/training.py` — `TrainingService.train(episodes, on_episode=None)`:
+  episode loop (reset → act → step → remember → learn), epsilon decay per
+  episode, returns a history of per-episode reward / final value / epsilon /
+  mean loss. The optional `on_episode(record)` callback fires as each episode
+  completes so a UI (GUI / `generate_results.py`) can stream live progress
+  instead of freezing until the whole run finishes. `TradingSDK.train` and
+  `.compare` relay the same callback through.
+
+## Overfitting guard — best-by-validation-Sharpe checkpoint (B16 / §6)
+`scripts/generate_results.py` does not just keep the final policy. Every
+`--validate-every` episodes (default `20`) it runs a **greedy** backtest on the
+`validation` split (`sdk.backtest("validation")`, which does not perturb the
+training RNG/weights) and, when the validation Sharpe improves on the running
+best, saves that checkpoint to `config.paths.checkpoint` with its
+`{episode, sharpe, return}` recorded as `metadata`. The chosen episode + metric
+are surfaced as `backtest_metrics.json → best_checkpoint`. This selects the
+model by held-out validation performance rather than by final-episode training
+score — the headline run picked episode 59, not 300.
 
 ## Key formulas (deck)
 - Bellman target: `y = r + γ · max_a' Q_target(s', a')·(1 − done)`
 - Loss: `L(θ) = mean((y − Q_policy(s,a))²)` (MSE)
 - ε-greedy: `random action w.p. ε, else argmax_a Q_policy(s,a)`; ε decays
   `max(epsilon_min, ε·epsilon_decay)` per episode.
+- **Double-DQN ablation (`double_q` toggle, §6, config default `false`):** when
+  enabled, the Bellman target decouples action *selection* from *evaluation* to
+  curb max-operator overestimation — the **online** net selects the next action
+  `a* = argmax_a' Q_policy(s', a')` while the **target** net evaluates it:
+  `y = r + γ · Q_target(s', a*)·(1 − done)`. With `double_q: false` the vanilla
+  target net both selects and evaluates (`max_a' Q_target`). Implemented in
+  `DQNAgent.learn` (single `if self.double_q` branch; same MSE loss).
 
 ## Public API
 ```
 ReplayBuffer(capacity, rng).push(s,a,r,s2,done); .sample(n) -> (S,A,R,S2,D); len()
-DQNAgent(cfg, device="cpu")
+DQNAgent(cfg, device="cpu")        # reads train_frequency + double_q from cfg.training
   .act(state, greedy=False) -> int
   .remember(s,a,r,s2,done); .learn() -> float | None; .decay_epsilon()
-  .sync_target(); .save(path); .load(path)
-TrainingService(env, agent).train(episodes) -> list[dict]
+  .sync_target(); .save(path, metadata=None); .load(path)
+TrainingService(env, agent).train(episodes, on_episode=None) -> list[dict]
 ```
 
 ## Acceptance criteria (tests assert)
