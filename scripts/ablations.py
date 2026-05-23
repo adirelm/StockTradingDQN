@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import statistics
 from pathlib import Path
 
@@ -27,6 +28,8 @@ from tradedqn.sdk import TradingSDK
 
 OUT = Path("results/analysis")
 KEYS = ("total_return", "benchmark_return", "sharpe_ratio", "max_drawdown", "win_rate", "num_trades")
+# two-sided t critical values (α=0.05) for small samples (scipy is not a dependency).
+_T_CRIT = {1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571, 6: 2.447, 7: 2.365, 8: 2.306}
 
 
 def _run(episodes: int, *, seed: int | None = None, double_q: bool = False) -> dict:
@@ -81,15 +84,24 @@ def _plot_seed_variance(out: dict) -> None:
     fig.savefig(OUT / "seed_variance.png", bbox_inches="tight")
 
 
-def seed_variance(episodes: int, seeds: list[int]) -> dict:
-    """§9 — repeat the headline run across seeds; report mean ± std (robustness)."""
-    runs = {str(seed): _run(episodes, seed=seed)["metrics"] for seed in seeds}
+def _summarize(runs: dict, seeds: list[int]) -> dict:
+    """Per-metric mean/std/min/max + a 95% t-CI (n is small by design → wide CI)."""
     summary = {}
     for metric in ("total_return", "sharpe_ratio"):
         values = [runs[str(s)][metric] for s in seeds]
-        summary[metric] = {"mean": statistics.mean(values), "std": statistics.pstdev(values),
-                           "min": min(values), "max": max(values)}
-    out = {"seeds": seeds, "episodes": episodes, "per_seed": runs, "summary": summary}
+        n = len(values)
+        mean = statistics.mean(values)
+        sample_sd = statistics.stdev(values) if n > 1 else 0.0  # ddof=1 for the CI
+        half = _T_CRIT.get(n - 1, 1.96) * sample_sd / math.sqrt(n) if n > 1 else 0.0
+        summary[metric] = {"mean": mean, "std": statistics.pstdev(values), "min": min(values),
+                           "max": max(values), "ci95": [mean - half, mean + half], "n": n}
+    return summary
+
+
+def seed_variance(episodes: int, seeds: list[int]) -> dict:
+    """§9 — repeat the headline run across seeds; report mean ± std + 95% CI (robustness)."""
+    runs = {str(seed): _run(episodes, seed=seed)["metrics"] for seed in seeds}
+    out = {"seeds": seeds, "episodes": episodes, "per_seed": runs, "summary": _summarize(runs, seeds)}
     (OUT / "seed_variance.json").write_text(json.dumps(out, indent=2), encoding="utf-8")
     _plot_seed_variance(out)
     return out

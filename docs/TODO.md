@@ -4,6 +4,11 @@ Task tracker (§2.2). **Definition of Done (DoD)** for every build task: behavio
 implemented + a test asserting it + gates green (ruff, ≤150 lines, coverage ≥85%)
 + an evidence pointer (file / test / screenshot) recorded + committed.
 
+**Ownership (§2.2.3c).** Solo project — every task below is owned end-to-end by the
+solo developer (architect role: scope, architecture, reward design, acceptance
+criteria, review sign-off), with the AI as implementer against each approved PRD.
+No per-task hand-off, so ownership is stated once here rather than per row.
+
 ## Build phases — all ✅ done (one PRD + commit each)
 | # | Phase | Status | Evidence |
 |---|---|---|---|

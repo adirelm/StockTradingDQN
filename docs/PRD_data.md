@@ -43,6 +43,23 @@ DataClient(cache_dir, gatekeeper=None, fetch_fn=_yf_download)
     .get_ohlcv(ticker, start, end, interval="1d", force_refresh=False) -> DataFrame
 ```
 
+### Rate-limit config key mapping (§5.2)
+The guidelines' example names a single `requests_per_minute`-style throttle; our
+gatekeeper enforces **two** independent limits, so the `config.yaml`
+`data.rate_limit` keys are named for what they control (ADR-001 keeps
+behaviour-precise names over the example literals):
+
+| Guideline example | This project (`data.rate_limit`) | Meaning |
+|---|---|---|
+| `requests_per_minute` | `max_calls_per_window` + `window_seconds` | ≤ N calls per rolling window (default 5 / 60s) |
+| (implicit spacing) | `min_interval_seconds` | minimum gap between two calls (default 2.0s) |
+| `max_retries` | `max_retries` | bounded retry on transient failure |
+
+`requests_per_minute == max_calls_per_window` when `window_seconds == 60`. The
+keys are read by attribute in `sdk.py::_gatekeeper` and `RateLimitGatekeeper.__init__`;
+renaming them is a behaviour-equivalent cosmetic swap, deferred to avoid a
+two-source-of-truth config.
+
 ## Acceptance criteria (tests must assert)
 - Config: `window_size==30`, `features_count==10`, `gamma==0.95`,
   `actions.sell/hold/buy == 0/1/2`; nested attribute access; `to_dict()`

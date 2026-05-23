@@ -28,6 +28,22 @@ The README contains the rendered **data-flow** and **OOP-layers** mermaid
 diagrams plus the **Dueling Conv1D network** diagram. Dependency rule: arrows
 point downward only — a UI never imports an engine module; the SDK is the seam.
 
+### C4-level diagram map (§2.2.2b)
+The diagrams collectively cover the C4 model; each is labelled with the level it
+actually serves (no level is claimed without a backing diagram):
+
+| C4 level | Served by | What it shows |
+|---|---|---|
+| **L1 — Context** | [deployment.mmd](diagrams/deployment.mmd) (doubles as context) | the one user/agent, the TradeDQN system, the single external system (Yahoo Finance, keyless) |
+| **L2 — Container** | [deployment.mmd](diagrams/deployment.mmd) + [oop_layers.mmd](diagrams/oop_layers.mmd) | single-host app: UI → SDK → engine → local filesystem; one process, single-threaded (§15) |
+| **L3 — Component** | [oop_layers.mmd](diagrams/oop_layers.mmd) + [architecture_data_flow.mmd](diagrams/architecture_data_flow.mmd) | named classes per layer + the data path between them; interface contracts in the table below |
+| **L4 — Code** | README *Network — Dueling Conv1D DQN* | internals of one component (`DuelingDQN`): Conv1D → Dense → Value/Advantage split → Q-aggregation |
+| **Dynamic (UML)** | [sequence_backtest.mmd](diagrams/sequence_backtest.mmd) | UML sequence for one Prepare→Train→Backtest cycle (a C4 supplement, not a level) |
+
+No standalone single-purpose Context diagram nor a separate UML class diagram
+exists — the deployment diagram serves Context/Container and the OOP-layers
+diagram is the de-facto Component/code-structure view.
+
 ## Components (interface contracts)
 | Component | Key interface |
 |---|---|
@@ -89,3 +105,21 @@ per-ticker training.
 ## Build sequence
 10 phases, each a PRD + a TDD commit (data → features → env → network → training
 → backtest → SDK → terminal → GUI → docs). Status + definition-of-done: [TODO.md](TODO.md).
+
+## Milestones & checkpoints (§2.2)
+Sequenced as phase-milestones rather than calendar dates (solo, single-deadline
+project — final submission due **2026-06-03**). Each milestone is a checkpoint:
+"reached" only when its PRD is approved, its TDD commit lands, and all gates are
+green (ruff, ≤150 code-lines, coverage ≥85%, secret-scan).
+
+| Milestone (checkpoint) | Phases | Exit criterion |
+|---|---|---|
+| **M1 — Data & features ready** | 1–2 | OHLCV cached + 8 indicators, fit-on-train split, tests green |
+| **M2 — Environment playable** | 3 | `reset/step` returns the 30×10 state + reward, tests green |
+| **M3 — Learning loop closes** | 4–5 | Dueling DQN trains via replay + target net; loss behaves, tests green |
+| **M4 — End-to-end pipeline** | 6–7 | backtest vs Buy&Hold + inference behind the `TradingSDK`, tests green |
+| **M5 — Usable product** | 8–9 | terminal menu + GUI run through the SDK, tests green |
+| **M6 — Submission-ready** | 10 | docs + real results + diagrams; pre-submission review passed |
+
+Milestones are strictly ordered (each depends on the prior); no parallel track.
+Per-phase status: [TODO.md](TODO.md).

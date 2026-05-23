@@ -57,6 +57,33 @@ These were **human-decided** and recorded, because they change behaviour:
 - Checkpoints load with `weights_only=True` (no arbitrary-code execution),
   carried over as a deliberate §7 security rule.
 
+## Examples of AI output (illustrative, §8.3)
+Two short, representative excerpts of what the AI produced and what the
+human-directed correction changed — neither invents anything not in this repo.
+
+**1 — γ/λ notation slip (verbatim diff, commit `e4824d2`).** The AI wrote the
+Sharpe weight as `γ`, colliding with the discount factor γ=0.95; config, PRDs,
+and code all use `λ` (`risk_lambda`). The human-directed fix:
+
+```diff
+- `rₜ = ΔVₜ − Cₜ − Sₜ + γ·Sharpeₜ`.
++ `rₜ = ΔVₜ − Cₜ − Sₜ + λ·Sharpeₜ`.
+```
+
+**2 — look-ahead normalizer (representative, from `features/dataset.py`).** The
+AI's first instinct scaled features against the *whole* series — the cardinal
+look-ahead leak; the human required fit-on-train-only with val/test clipped (now
+guarded by `test_uses_train_stats_and_clips_future_highs`):
+
+```python
+# AI first draft (leaks future statistics into train/val):
+scaled = (frame - frame.min()) / (frame.max() - frame.min())
+# Corrected — fit min/range on the TRAIN slice, clip the rest:
+self._min = train_frame.min()
+self._range = (train_frame.max() - self._min).replace(0.0, 1.0)
+scaled = ((frame - self._min) / self._range).clip(0.0, 1.0)
+```
+
 ## Verbatim orchestrating prompt (per phase)
 
 > *You are implementing Phase N of TradeDQN against `docs/PRD_<phase>.md`,

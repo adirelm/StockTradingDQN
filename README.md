@@ -217,6 +217,13 @@ interval **and** a max-calls-per-window before any live fetch; `DataClient` is
 **cache-first** (returns the local parquet when present, with a `{ticker}.csv`
 fallback), so one pull is cached and every subsequent run is offline and reproducible.
 
+**Least privilege (§20.3).** This bounded access *is* the least-privilege posture:
+the app holds no credentials (Yahoo data is keyless/public), reads no runtime
+secrets, and reaches exactly one external endpoint — and only on a cache miss,
+capped by the gatekeeper's min-interval and per-window quota. Everything else is
+the local filesystem (cache, checkpoints, results); no broader network, credential,
+or filesystem permission is requested than that one rate-limited read-only fetch needs.
+
 ## Dataset (§4)
 
 **Source** (binding): Yahoo Finance via `yfinance`, **AAPL**, **2020-01-01 → 2023-01-01**,
@@ -253,6 +260,14 @@ The env then injects the 2 portfolio channels (`position`, `unrealized_pnl` — 
 never shuffled; a `clip-future-highs` test guards against look-ahead leakage.
 
 ## Installation
+
+**Prerequisites.** Python **3.11–3.13** (`requires-python = ">=3.11,<3.14"`;
+`.python-version` pins 3.11) and the [`uv`](https://docs.astral.sh/uv/) package
+manager — `uv` provisions the interpreter and the locked dependency set. Runs
+**CPU-only** by default (no GPU required); the agent is device-parameterised
+(`DQNAgent(device=…)`), so CUDA/MPS are optional. OS-independent — developed on
+macOS, runs on Linux/Windows (the GUI is stdlib Tkinter; `gui/tcl_setup.py` fixes
+uv's bundled Tcl/Tk path automatically).
 
 ```bash
 uv sync --dev
@@ -306,17 +321,37 @@ the loader validates at startup. Key groups:
 | `training` | `gamma`, `learning_rate`, `episodes`, `epsilon_*`, `replay_capacity`, `batch_size`, `train_frequency`, `target_update_frequency` | the DQN learning loop |
 | (top-level) | `seed` (42), `version` | global RNG seed → reproducible runs; config-schema version (§8) |
 
-Edit values, re-run — nothing in code needs to change.
+Edit values, re-run — nothing in code needs to change. There's a **single config
+for a single environment** (§20.3): TradeDQN is a local, single-process tool with
+no deployed dev/staging/prod tiers and no secrets store, so per-environment config
+templates would add ceremony with nothing to vary.
 
 ## Extending it
 
-The `TradingSDK` constructor is the supported extension surface (dependency
-injection): `TradingSDK(cfg=…, data_client=…, agent=…)`. To add:
+The design is **API-first**: `TradingSDK` is the stable public surface (the
+verb/noun methods `prepare_data` / `train` / `backtest` / `recommend` / `compare` /
+`save_brain` / `load_brain`) and the only thing the UIs depend on. Its constructor
+is the supported **extension point** — the three injectable seams
+`TradingSDK(cfg=…, data_client=…, agent=…)` let you replace the config, the data
+source, or the whole agent without touching engine code. There is **no plugin
+registry**: extension is plain dependency injection plus the two pure-function
+seams below (`features/indicators.py`, `env/reward.py`). To add:
 
 - **a new indicator** → add one pure function in [`features/indicators.py`](src/tradedqn/features/indicators.py) and reference it in `Preprocessor` + the `features.names`/`features_count` config (one module + config).
 - **a new reward term** → add it in [`env/reward.py`](src/tradedqn/env/reward.py) `RewardFunction.compute` (one place; components are returned in `info`).
 - **a different data source** → implement an object with `get_ohlcv(...)` and inject it as `data_client` — no engine change.
 - **a different network** → swap the `agent`'s policy/target builder; the SDK/UIs are untouched.
+
+**Worked example — add an ATR (Average True Range) indicator.** Three edits, no
+engine or UI changes: (1) add a pure function `atr(high, low, close, period)` to
+[`features/indicators.py`](src/tradedqn/features/indicators.py) (a `pd.Series` in,
+a same-length series out, NaN during warm-up — same contract as the others); (2)
+wire it in [`features/preprocessor.py`](src/tradedqn/features/preprocessor.py) (add
+`"atr"` to the computed columns and to `MARKET_FEATURES`); (3) declare it in
+[`config/config.yaml`](config/config.yaml) — append `atr` to `features.names`, bump
+`features_count` 10 → 11 (9 market + 2 portfolio), add `features.atr_period`.
+Re-run `uv run main.py` and the new channel flows through normalization, the
+`(window × features)` state, the Conv1D Q-net, and both UIs automatically.
 
 ## Concurrency & thread safety (§15)
 
@@ -417,6 +452,14 @@ buttons are tab/Enter reachable). Status is **text**, not colour-coded, so it's
 screen-reader / colour-blind friendly; chart lines use a distinct colour **and**
 a dashed vs solid style (not colour alone). Known limitations: no explicit ARIA/
 screen-reader testing; chart colours are not formally CVD-checked.
+
+> **No screencast (§20.2).** A demo video is recommended but not included; in its
+> place this README ships a **reproducible terminal session**
+> ([`assets/terminal_session.txt`](assets/terminal_session.txt)) and **four real
+> GUI screenshots** (dashboard · train · recommend · compare, above), each
+> regenerable verbatim with `uv run python scripts/capture_gui.py`. Every figure is
+> a genuine capture from a seeded run, not a mockup — the UI is verifiable
+> end-to-end without a video.
 
 ## Results & analysis
 
@@ -547,6 +590,28 @@ full reward's purpose (discipline over-trading, reward risk-adjustment) is what 
 over longer/easier regimes. Reward design changes *what* the agent optimises, not just
 the number.
 
+#### Reward decomposition (waterfall, §9.3)
+
+Summing each reward term over the headline test backtest (the four bars sum exactly to
+Σ reward; reproduce with `uv run python scripts/reward_waterfall.py`):
+
+![Reward decomposition waterfall](results/analysis/reward_waterfall.png)
+
+| Term (summed over test) | Contribution |
+|---|---:|
+| ΔV (market PnL, capital-fraction) | −0.136 |
+| − cost | −0.020 |
+| − slippage | −0.020 |
+| **+ λ·Sharpe** (λ=1.0) | **−8.341** |
+| net reward (= Σ rₜ) | −8.516 |
+
+**Finding — the λ·Sharpe term dominates the learning signal.** With λ=1.0 the summed
+rolling-Sharpe term (−8.34) is ~**98 %** of the reward magnitude; the actual capital
+PnL/cost/slippage terms (≈ −0.18 combined) barely register. So the agent is overwhelmingly
+optimising *risk-adjustment*, not raw return — concrete evidence for the Conclusions' note
+that the **Sharpe-heavy reward (λ=1.0) is worth re-weighting**. (The capital terms and the
+unitless Sharpe term share the reward formula but not a scale, hence the value labels.)
+
 ### §4 — cross-ticker: the same pipeline on NVDA
 
 The AAPL pipeline re-run on **NVDA** (identical mechanism; `data/raw/NVDA.csv` committed
@@ -606,6 +671,7 @@ as mean ± std.
 | 13 | −9.7 % | −0.82 | 18 |
 | 100 | −24.7 % | −2.81 | 22 |
 | **mean ± std** | **−13.2 % ± 7.5 %** | **−1.22 ± 0.95** | |
+| **95 % CI** *(t, n=5)* | **[−23.5 %, −2.8 %]** | **[−2.53, +0.10]** | |
 
 **Conclusion — robust verdict, fragile number.** Two things, both reported: (1) **every
 seed loses money and posts a negative Sharpe** (best case seed 1 is −2.5 %, Sharpe ≈ 0) —
@@ -615,6 +681,13 @@ But (2) the **spread is large** (−2.5 % to −24.7 %, a 22-point swing; σ ≈
 **pessimistic tail** — the 5-seed mean (−13.2 %) is milder and even edges Buy & Hold
 (−16.5 %). The honest reading: the qualitative conclusion is seed-robust, the exact
 percentage is not. This is exactly why a one-seed backtest shouldn't be over-read.
+
+A 95 % t-interval (n=5) makes the small sample explicit instead of hiding it. The **return
+CI sits entirely below zero** ([−23.5 %, −2.8 %]) — "loses money on this slice" survives as
+an *inferential*, not just descriptive, claim. The **Sharpe CI crosses zero** ([−2.53,
+**+0.10**]) — the correct read at n=5: we cannot statistically distinguish the risk-adjusted
+edge from zero, fully consistent with the "no edge" verdict and an honest refusal to
+over-claim significance on five seeds.
 
 ## Concept Q&A
 
