@@ -58,7 +58,8 @@ def assert_in_project(path: str) -> str:
     """§13 path-traversal guard: a *relative* path must resolve inside the project.
 
     Absolute paths pass through (so tmp dirs in tests work); relative paths that
-    escape the project root (e.g. ``../../etc/x``) are refused.
+    escape the project root (e.g. ``../../etc/x``) are refused. This constrains
+    *relative* paths only — it is a traversal guard, not a sandbox.
     """
     candidate = Path(path)
     if candidate.is_absolute():

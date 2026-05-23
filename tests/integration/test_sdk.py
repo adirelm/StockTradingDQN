@@ -67,6 +67,10 @@ class TestPipeline:
         assert set(histories) == {"Dueling DQN", "Plain DQN"}
         assert len(histories["Plain DQN"]) == 1 and "reward" in histories["Plain DQN"][0]
 
+    def test_cfg_with_dueling_toggles_the_flag(self, prepared):
+        assert prepared._cfg_with_dueling(True).network.dueling is True   # §9 ablation plumbing
+        assert prepared._cfg_with_dueling(False).network.dueling is False  # the two arms genuinely differ
+
     def test_prepare_data_accepts_ticker_and_date_overrides(self, tmp_path):
         seen: dict[str, str] = {}
 

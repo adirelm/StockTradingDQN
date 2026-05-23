@@ -1,6 +1,7 @@
 """Tests for DQNAgent (B9/B12/B14/B26 — ε-greedy, learn, target sync, checkpoint)."""
 
 import numpy as np
+import pytest
 import torch
 
 WINDOW, FEATURES = 5, 10
@@ -69,6 +70,30 @@ class TestLearn:
         fill_replay(agent, 8)
         loss = agent.learn()
         assert isinstance(loss, float) and np.isfinite(loss)
+
+    def test_double_dqn_target_actually_differs_from_vanilla(self, tiny_cfg):
+        from tradedqn.model.agent import DQNAgent
+
+        agent = DQNAgent(tiny_cfg)
+        for p in agent.target.parameters():  # perturb target ≠ policy so the estimators can diverge
+            p.data.add_(0.5)
+        ns = torch.as_tensor(np.stack([a_state(0.2), a_state(0.8)]), dtype=torch.float32)
+        r, d = torch.zeros(2), torch.zeros(2)
+        vanilla = agent._bellman_target(r, ns, d)
+        agent.double_q = True
+        double = agent._bellman_target(r, ns, d)
+        assert not torch.allclose(vanilla, double)   # online-selects/target-evaluates ≠ plain max
+        assert torch.all(double <= vanilla + 1e-5)   # Double-DQN curbs the max over-estimation
+
+    def test_terminal_done_zeroes_the_bootstrap(self, dqn_agent):
+        ns = dqn_agent._batch(a_state(0.5))
+        reward = torch.tensor([2.0])
+        with torch.no_grad():
+            max_next = dqn_agent.target(ns).max(dim=1).values
+        terminal = dqn_agent._bellman_target(reward, ns, torch.tensor([1.0]))
+        ongoing = dqn_agent._bellman_target(reward, ns, torch.tensor([0.0]))
+        assert terminal.item() == pytest.approx(2.0)  # done → target = reward, no bootstrap
+        assert ongoing.item() == pytest.approx((2.0 + dqn_agent.gamma * max_next).item())  # else + γ·maxQ
 
     def test_epsilon_decays_with_floor(self, dqn_agent):
         dqn_agent.epsilon = 1.0

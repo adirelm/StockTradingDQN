@@ -79,6 +79,22 @@ class DQNAgent:
         """Store a transition (s, a, r, s', done) in the replay buffer."""
         self.replay.push(state, action, reward, next_state, done)
 
+    def _bellman_target(self, rewards, next_states, dones):
+        """Bellman target ``y = r + γ·maxₐ' Q(sₜ₊₁,a';θ⁻)·(1−done)`` (no-grad).
+
+        Double-DQN (``double_q``): the **online** net selects the next action and the
+        **target** net evaluates it — curbs the plain-``max`` over-estimation; vanilla
+        DQN: the target net both selects and evaluates. ``(1−done)`` zeroes the
+        bootstrap at a terminal step (the target is then just the reward).
+        """
+        with torch.no_grad():
+            if self.double_q:  # online net SELECTS the next action, target net EVALUATES it
+                next_actions = self.policy(next_states).argmax(dim=1, keepdim=True)
+                max_next = self.target(next_states).gather(1, next_actions).squeeze(1)
+            else:  # vanilla DQN: target net both selects and evaluates (max)
+                max_next = self.target(next_states).max(dim=1).values
+            return rewards + self.gamma * max_next * (1.0 - dones)
+
     def learn(self) -> float | None:
         """Optimise on a replay mini-batch every ``train_frequency`` steps.
 
@@ -93,14 +109,7 @@ class DQNAgent:
         states, next_states = states.to(self.device), next_states.to(self.device)
         actions, rewards, dones = actions.to(self.device), rewards.to(self.device), dones.to(self.device)
         q_sa = self.policy(states).gather(1, actions.unsqueeze(1)).squeeze(1)
-        with torch.no_grad():
-            if self.double_q:  # online net SELECTS the next action, target net EVALUATES it
-                next_actions = self.policy(next_states).argmax(dim=1, keepdim=True)
-                max_next = self.target(next_states).gather(1, next_actions).squeeze(1)
-            else:  # vanilla DQN: target net both selects and evaluates (max)
-                max_next = self.target(next_states).max(dim=1).values
-            target = rewards + self.gamma * max_next * (1.0 - dones)
-        loss = nn.functional.mse_loss(q_sa, target)
+        loss = nn.functional.mse_loss(q_sa, self._bellman_target(rewards, next_states, dones))
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()

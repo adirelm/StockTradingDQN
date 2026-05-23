@@ -51,7 +51,7 @@ diagram is the de-facto Component/code-structure view.
 | `DataClient` | `get_ohlcv(ticker,start,end,interval,force_refresh) → DataFrame` (cache-first, gatekept) |
 | `RateLimitGatekeeper` | `acquire(wait=True) → waited_seconds` (min-interval + sliding-window) |
 | `TradingEnvironment` | `reset() → state(30×10)`, `step(action) → (state, reward, done, info)` |
-| `DQNAgent` | `act(state,greedy) → int`, `remember(...)`, `learn() → loss\|None`, `q_values(state)`, `save/load` |
+| `DQNAgent` | `act(state,greedy) → int`, `q_values(state)`, `q_saliency(state)` (inference depends on it), `remember(...)`, `learn() → loss\|None`, `save/load` |
 | `BacktestService` | `run() → {equity_curve, benchmark_curve, total_return, sharpe_ratio, max_drawdown, win_rate, num_trades}` |
 
 ## Architecture Decision Records

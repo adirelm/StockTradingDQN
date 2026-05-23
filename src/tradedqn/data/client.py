@@ -7,6 +7,7 @@ gatekeeper. The fetcher is injectable so unit tests never touch the network.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from pathlib import Path
 
@@ -15,6 +16,10 @@ import pandas as pd
 from tradedqn.data.gatekeeper import RateLimitGatekeeper
 
 OHLCV_COLUMNS = ["Open", "High", "Low", "Close", "Volume"]
+# §7/§13 path-traversal guard: ticker/date flow into the cache filename, so they
+# must be a real market symbol / ISO date — never a path fragment like ``../evil``.
+_VALID_TICKER = re.compile(r"^[A-Za-z0-9.\-^=]{1,15}$")  # AAPL, BRK-B, ^GSPC, EURUSD=X
+_VALID_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _yf_download(ticker: str, start: str, end: str, interval: str) -> pd.DataFrame:  # pragma: no cover - network
@@ -41,7 +46,14 @@ class DataClient:
         self._fetch_fn = fetch_fn
 
     def _cache_path(self, ticker: str, start: str, end: str) -> Path:
-        """Parquet cache path: ``{cache_dir}/{ticker}_{start}_{end}.parquet`` (§4)."""
+        """Parquet cache path ``{cache_dir}/{ticker}_{start}_{end}.parquet`` (§4).
+
+        Validates ticker/dates first so a crafted value cannot escape ``cache_dir``.
+        """
+        if not _VALID_TICKER.match(ticker):
+            raise ValueError(f"invalid ticker {ticker!r} (expected a market symbol)")
+        if not (_VALID_DATE.match(start) and _VALID_DATE.match(end)):
+            raise ValueError(f"invalid date {start!r}/{end!r} (expected YYYY-MM-DD)")
         return self.cache_dir / f"{ticker}_{start}_{end}.parquet"
 
     def get_ohlcv(

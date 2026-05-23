@@ -90,6 +90,8 @@ class TradingSDK:
 
         The §9 ablation: same trunk, only the dueling head differs. ``on_episode``
         (optional) fires as ``(arch_name, record)`` so a UI can show live progress.
+        Non-persisting: it trains two throwaway agents and does **not** touch
+        ``self.agent`` — a later ``recommend`` reflects ``train``, not this compare.
         """
         self._require_data()
         episodes = episodes if episodes is not None else self.cfg.training.episodes

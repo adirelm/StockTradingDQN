@@ -74,6 +74,16 @@ class TestValidation:
         with pytest.raises(ValueError, match="missing OHLCV columns"):
             client.get_ohlcv("X", "2020-01-01", "2020-01-02")
 
+    def test_path_traversal_ticker_rejected(self, tmp_path):
+        client = DataClient(cache_dir=str(tmp_path), gatekeeper=SpyGatekeeper())
+        with pytest.raises(ValueError, match="invalid ticker"):  # §13: crafted symbol can't escape cache_dir
+            client.get_ohlcv("../../etc/evil", "2020-01-01", "2020-01-02")
+
+    def test_malformed_date_rejected(self, tmp_path):
+        client = DataClient(cache_dir=str(tmp_path), gatekeeper=SpyGatekeeper())
+        with pytest.raises(ValueError, match="invalid date"):
+            client.get_ohlcv("AAPL", "01/01/2020", "2020-01-02")
+
 
 class TestFallback:
     def test_fetch_failure_falls_back_to_csv(self, tmp_path):

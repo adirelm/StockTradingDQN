@@ -1,6 +1,7 @@
 """Tests for InferenceService (B18 — latest window → Q → Buy/Hold/Sell)."""
 
 import numpy as np
+import pytest
 
 from tradedqn.services.inference import InferenceService, action_names
 
@@ -37,7 +38,9 @@ class TestRecommend:
     def test_confidence_and_feature_attribution(self, dqn_agent, tiny_cfg):
         svc = InferenceService.from_config(dqn_agent, tiny_cfg)
         rec = svc.recommend(a_state())
-        assert 0.0 <= rec["confidence"] <= 1.0          # softmax probability of the chosen action
+        q = np.asarray(rec["q_values"])
+        ex = np.exp(q - q.max())
+        assert rec["confidence"] == pytest.approx(float((ex / ex.sum()).max()))  # softmax prob of the CHOSEN action
         assert len(rec["top_features"]) == 3            # top-k saliency drivers (§8 explanation)
         assert set(rec["top_features"]) <= set(tiny_cfg.features.names)
 

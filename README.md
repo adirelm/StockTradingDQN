@@ -23,7 +23,7 @@ infinite and can't fit in a table.
 | Lint | `uv run ruff check src/ tests/ scripts/ main.py` |
 | Regenerate results | `uv run python scripts/generate_results.py` (charts → `results/`) |
 | Headline result | AAPL test, 300 ep: **−17.5%** vs Buy & Hold −16.5%, Sharpe −1.66 (honestly negative) |
-| Stack | PyTorch Dueling Conv1D DQN · Tkinter+matplotlib GUI · `uv` · 178 tests, 100% coverage |
+| Stack | PyTorch Dueling Conv1D DQN · Tkinter+matplotlib GUI · `uv` · 183 tests, 100% coverage |
 
 ## Objective
 
@@ -340,7 +340,9 @@ seams below (`features/indicators.py`, `env/reward.py`). To add:
 - **a new indicator** → add one pure function in [`features/indicators.py`](src/tradedqn/features/indicators.py) and reference it in `Preprocessor` + the `features.names`/`features_count` config (one module + config).
 - **a new reward term** → add it in [`env/reward.py`](src/tradedqn/env/reward.py) `RewardFunction.compute` (one place; components are returned in `info`).
 - **a different data source** → implement an object with `get_ohlcv(...)` and inject it as `data_client` — no engine change.
-- **a different network** → swap the `agent`'s policy/target builder; the SDK/UIs are untouched.
+- **a different network** → swap the `agent`'s policy/target builder; the SDK/UIs are untouched. A drop-in `agent` must satisfy the duck-typed contract `act / q_values / q_saliency / remember / learn / save / load` (inference uses `q_values` + `q_saliency`).
+
+> **`scripts/` are a tooling tier, not UIs.** The "UIs depend only on the SDK" rule binds the terminal/GUI; the offline `scripts/` (results, sweeps, ablations) are permitted to import `config` / `data` / `gui.charts` directly — they're batch tools, not the product surface.
 
 **Worked example — add an ATR (Average True Range) indicator.** Three edits, no
 engine or UI changes: (1) add a pure function `atr(high, low, close, period)` to
@@ -777,7 +779,7 @@ violations, ≤150 code lines/file, secret-scan, uv-only.
 
 ## Tests
 
-**178 tests · 100% statement + branch coverage** (the suite *fails* under 85%). Run:
+**183 tests · 100% statement + branch coverage** (the suite *fails* under 85%). Run:
 
 ```bash
 uv run pytest tests/ --cov=src/tradedqn --cov-report=term-missing
@@ -823,9 +825,9 @@ Latest run:
 ```text
 $ uv run pytest tests/ -q
 ...
-TOTAL                                     909      0    134      0   100%
+TOTAL                                     917      0    138      0   100%
 Required test coverage of 85% reached. Total coverage: 100.00%
-178 passed in 4.72s
+183 passed in 4.0s
 ```
 
 ## Project structure

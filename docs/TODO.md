@@ -23,7 +23,7 @@ No per-task hand-off, so ownership is stated once here rather than per row.
 | 9 | GUI dashboard | ✅ | `gui/`, tests; Phase 9 |
 | 10 | Docs + real results | ✅ | README, PROMPTS, COST_ANALYSIS, charts; Phase 10 |
 
-Status snapshot: **178 tests / 100% coverage** (statement + branch), ruff clean,
+Status snapshot: **183 tests / 100% coverage** (statement + branch), ruff clean,
 ≤150 code lines/file, secret-scan clean, wheel imports from a clean build.
 
 ## Post-review remediation log (guideline-audit findings)
