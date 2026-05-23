@@ -33,16 +33,36 @@ features, wrap them in an RL environment, train a Dueling DQN with experience
 replay and a target network, and **backtest** the policy against a Buy & Hold
 benchmark — all behind one SDK with both a terminal and a GUI.
 
+## RL formulation (§10)
+
+The agent learns a **decision policy**, not a price forecast. Every RL element
+maps onto this project as follows — grounded in the code, not the textbook:
+
+| RL element | What it is here (trading meaning) | Where in code |
+|---|---|---|
+| **Agent** | The Dueling-DQN trader: observes a market+portfolio window, picks Sell/Hold/Buy to maximise long-run risk-adjusted portfolio value. | [agent.py](src/tradedqn/model/agent.py) `DQNAgent`, [network.py](src/tradedqn/model/network.py) `DuelingDQN` |
+| **Environment** | A Gym-style single-symbol market sim: executes the trade at today's price, advances one day, returns the next state + reward. Decoupled from model and GUI (§5). | [trading_env.py](src/tradedqn/env/trading_env.py) `TradingEnvironment` |
+| **State** | A **30×10 tensor** — 8 market features over the trailing 30 days + 2 portfolio channels (`position`, `unrealized_pnl`) broadcast across the window. Built from rows up to and including day `t` only — no look-ahead. | [trading_env.py](src/tradedqn/env/trading_env.py) `assemble_state` / `_state` |
+| **Action** | Three discrete all-in/all-out actions: **`Sell=0`, `Hold=1`, `Buy=2`**. `Buy` while holding (or `Sell` while flat) is a harmless no-op. | [config.yaml](config/config.yaml) `actions`, [trading_env.py](src/tradedqn/env/trading_env.py) `step` |
+| **Reward** | `rₜ = ΔVₜ − Cₜ − Sₜ + λ·Sharpeₜ` — mark-to-market PnL minus transaction cost and slippage, plus a rolling-Sharpe risk bonus (fraction-of-capital units). Rewards economical, risk-adjusted trading, not turnover. | [reward.py](src/tradedqn/env/reward.py) `RewardFunction.compute` |
+| **Episode** | One chronological pass over a single data split (`reset` → repeated `step` until the slice ends). ε decays once per episode; train/val/test are never mixed. | [training.py](src/tradedqn/services/training.py), [trading_env.py](src/tradedqn/env/trading_env.py) `reset`/`step` |
+| **Policy** | **ε-greedy** over `argmax_a Q(s,a)` during training (explore with prob ε); **greedy** (`argmax`, ε=0) at backtest, so we evaluate the *learned* policy, not exploration noise. | [agent.py](src/tradedqn/model/agent.py) `act`, [backtest.py](src/tradedqn/services/backtest.py) |
+| **Return** | The **discounted cumulative reward** `Gₜ = Σ γᵏ rₜ₊ₖ` (γ = 0.95). This — *not* the next day's price — is what `Q(s,a)` estimates and what the Bellman target trains toward. | [agent.py](src/tradedqn/model/agent.py) `learn`, [config.yaml](config/config.yaml) `training.gamma` |
+
+This definition is realised in the env's `reset()` / `step()` interface (§3).
+
 ## What's implemented
 
 - **Data** — `DataClient` pulls OHLCV from Yahoo Finance (AAPL, 2020-01-01→2023-01-01)
   with a **rate-limit gatekeeper** (§5) and a local **parquet cache** (`data/raw/`,
   snappy) + a `{ticker}.csv` fallback — offline, reproducible.
-- **Features** — 8 market features (`log_return`, `rsi_14`, `macd`,
-  `macd_signal`, `macd_hist`, `bb_pct`, `vwap_dist`, `volume_norm`), min-max
-  normalized *fit-on-train* (no look-ahead), chronological 70/15/15 split. A
-  standard-quant set *inspired by* the brief's §4 list (not a literal 1:1 — see
-  the mapping in [docs/PRD_features.md](docs/PRD_features.md)).
+- **Features** — the brief's §4 list, implemented **1:1**: the 8 market features
+  (`log_return`, `rsi_14`, `macd`, `macd_signal`, `macd_hist`, `bb_pct`,
+  `vwap_dist`, `volume_norm`) + the 2 portfolio channels (`position`,
+  `unrealized_pnl`) = exactly the 10 channels §4 enumerates → the **30×10** state.
+  Market features are min-max normalized *fit-on-train* (no look-ahead) over a
+  chronological 70/15/15 split; per-channel formulas in
+  [docs/PRD_features.md](docs/PRD_features.md).
 - **Environment** — `TradingEnvironment`: 30×10 state (8 market + 2 portfolio
   channels `position`, `unrealized_pnl`), Sell/Hold/Buy, reward
   `rₜ = ΔVₜ − Cₜ − Sₜ + λ·Sharpeₜ`.
@@ -60,7 +80,7 @@ expressed in this project:
 | Lecture concept | Deck slides | Where it lives here |
 |---|---|---|
 | Q-Table → **function approximation** (why a table can't span continuous, multi-feature windows) | 3–6, 14–15 | [Concept Q&A #2](#concept-qa); [network.py](src/tradedqn/model/network.py) |
-| **RL formulation** — Agent/Environment/State/Action/Reward/Episode/Policy/Return | 7–10 | [RL mapping](#objective) + [Concept Q&A](#concept-qa); [trading_env.py](src/tradedqn/env/trading_env.py) |
+| **RL formulation** — Agent/Environment/State/Action/Reward/Episode/Policy/Return | 7–10 | [RL formulation](#rl-formulation-10); [trading_env.py](src/tradedqn/env/trading_env.py) |
 | **Data → state tensor** (the exact 30×10 input shape) | 11–13 | [Dataset (§4)](#dataset-4); [trading_env.py](src/tradedqn/env/trading_env.py) `assemble_state` |
 | **Dueling DQN** — value & advantage streams, Q-values | 16–21 | [Network](#network--dueling-conv1d-dqn); `Q=V+A−mean(A)` in [network.py](src/tradedqn/model/network.py) |
 | **Exploration & stabilization** — ε-greedy, experience replay, target network | 22–24 | [agent.py](src/tradedqn/model/agent.py), [replay_buffer.py](src/tradedqn/model/replay_buffer.py) |
@@ -488,8 +508,9 @@ out-of-sample** on AAPL's 2022 drawdown (Sharpe −1.66, robust across 5 seeds).
 limitations are surfaced rather than hidden — overfitting, a largely single-ticker /
 single-regime scope (with a cross-ticker NVDA test included), and one deliberately
 deferred minor (no env-var config bridge) — and the negative result reflects a genuine
-market **regime shift**, not an implementation bug. Surfacing real constraints instead of
-engineering a fake win is the disciplined, defensible posture this brief explicitly rewards.
+market **regime shift**, not an implementation bug. The deliverable is a correct,
+analysable RL system with a truthfully-reported result — markets are hard, and saying so
+plainly is the point.
 <!-- CONCLUSIONS:END -->
 
 ## Comparative experiments (§4 cross-ticker · §6 Double-DQN · §7 reward design · §9 seed robustness)
@@ -505,8 +526,12 @@ uv run python scripts/ablations.py --episodes 300             # → results/anal
 
 ### §7 — reward design: basic ΔV vs full risk/cost-adjusted (AAPL test)
 
-Same data, same agent, **only the reward differs**: a *basic* reward (portfolio-value
-change only) vs the *full* reward (`ΔV − cost − slippage + λ·Sharpe`).
+Same data, same agent: a *basic* reward (portfolio-value change only, `ΔV`) vs the
+*full* reward (`ΔV − cost − slippage + λ·Sharpe`). **Honest caveat:** the basic variant
+zeroes the `transaction_cost`/`slippage` config, which removes them from the *simulator*
+too — so this contrasts a *basic-reward, cost-free* regime against the full
+risk/cost-adjusted one, rather than isolating the reward term in perfect isolation. The
+qualitative takeaway (reward design reshapes the policy) holds either way.
 
 ![Reward design comparison](results/analysis/reward_comparison.png)
 
@@ -598,15 +623,15 @@ The twelve questions the brief requires the README to answer, with pointers to t
 1. **What does Q represent (vs predicting tomorrow's price)?** `Q(s,a;θ)` is the expected *discounted cumulative reward* of taking action `a` in state `s` then following the policy — the value of a *decision*, not a price forecast. The net never predicts the next price; it ranks Sell/Hold/Buy by long-run portfolio value ([network.py](src/tradedqn/model/network.py)).
 2. **Why function approximation, not a Q-Table?** The state `sₜ ∈ ℝ^{30×10}` is continuous and high-dimensional — a table would need a cell per distinct window (effectively infinite, never revisited). A Conv1D net generalises across unseen states via a parametric `Q(s,a;θ)`.
 3. **How does the reward shape the policy?** The objective *is* the reward: `rₜ = ΔVₜ − Cₜ − Sₜ + λ·Sharpeₜ` rewards risk-adjusted PnL net of cost, so the agent learns to trade economically rather than maximise turnover ([reward.py](src/tradedqn/env/reward.py)).
-4. **Reward = immediate profit only, no trade-cost penalty?** The agent would over-trade — churning every bar — since costs are invisible to it; real returns then vanish into fees/slippage. Our `Cₜ`/`Sₜ` terms penalise exactly that.
+4. **Reward = immediate profit only, no trade-cost penalty?** With `rₜ = ΔVₜ` alone, costs are invisible to the Bellman target, so a trade that nets +$1 of price move but −$3 of fees still back-propagates a *positive* Q-value — the agent learns to churn every bar and real returns leak away into fees/slippage. Our reward subtracts the same-step `Cₜ`/`Sₜ` the portfolio actually paid ([reward.py](src/tradedqn/env/reward.py)), so a trade only earns reward if its edge clears its cost; the `λ·Sharpeₜ` term further penalises the return *variance* that pure-profit reward ignores.
 5. **Why not mix Test into training; what is leakage?** The split is chronological (never shuffled); Test is strictly *after* train/val. Leakage = letting future info (future prices, or normalization stats fit on the whole series) bleed into training, inflating the backtest. We fit the normalizer on **train only** ([dataset.py](src/tradedqn/features/dataset.py)).
-6. **When is Hold optimal?** When the expected move doesn't cover cost + slippage, or the position is already correct — trading would only burn fees. Hold is the no-op that preserves capital.
+6. **When is Hold optimal?** Hold is optimal exactly when `Q(s,Hold)` is the argmax — i.e. when no trade has positive expected *net* value: the expected price move doesn't cover cost + slippage, or the position is already aligned with the move so trading would only burn fees. Because the state carries the agent's own `position`/`unrealized_pnl` channels ([trading_env.py](src/tradedqn/env/trading_env.py)), Hold is context-dependent — the same market window can favour Hold when already long and Buy when flat. It is the no-op that preserves capital while the cost-aware reward (Q4) makes marginal trades negative-EV.
 7. **How does Dueling help when mostly no action is needed?** The value head `V(s)` learns "how good is this state" *independent of action*; the advantage head learns the small per-action deltas. In a hold-dominated environment the shared `V(s)` is learned efficiently without sampling every `(s,a)` ([network.py](src/tradedqn/model/network.py)).
 8. **Exploration (training) vs evaluation (backtest)?** Training is ε-greedy (random with prob ε to explore); the backtest is **greedy** (`argmax Q`, ε=0) — we evaluate the learned policy, not exploration noise ([agent.py](src/tradedqn/model/agent.py), [backtest.py](src/tradedqn/services/backtest.py)).
 9. **Is Total Return enough?** No — a high return can hide huge risk. We also report **Sharpe** (risk-adjusted), **Max Drawdown** (worst pain), and **Win Rate** (consistency) so a lucky high-variance run can't pass as skill ([metrics.py](src/tradedqn/services/metrics.py)).
 10. **Which env/reward bugs fake a good backtest?** Look-ahead (using `price[t+1]` in the state), normalization fit on the full series, an off-by-one reward (crediting a trade before it executes), or zero transaction cost — all inflate results. Our env executes at `prices[t]` with the next day only as *outcome*, and a test asserts no look-ahead ([trading_env.py](src/tradedqn/env/trading_env.py)).
 11. **General policy vs an AAPL quirk?** The [§4 cross-ticker test](#comparative-experiments-4-cross-ticker--6-double-dqn--7-reward-design--9-seed-robustness) answers this directly: the **same method loses on AAPL (−17.5% vs −16.5%) but beats Buy & Hold on NVDA (+26.6% vs +7.1%)**. Opposite verdicts on two symbols is itself the evidence — there's no *consistent* edge, just regime-dependent behaviour. Establishing generality would need consistent held-out Sharpe across **many tickers and regimes**, not one lucky symbol.
-12. **Extend to another (financial or non-financial) problem, same RL structure?** Swap the `Environment` behind the SDK: define a new `state`/`action`/`reward` (e.g. energy dispatch, inventory control) in a `TradingEnvironment`-shaped class; the agent / training / backtest / SDK layers are domain-agnostic ([Extending it](#extending-it)).
+12. **Extend to another (financial or non-financial) problem, same RL structure?** The agent/training/backtest/SDK layers touch the env only through `reset()` and `step(action) → (state, reward, done, info)` and a `(window × features) → n_actions` Q-net — nothing in them is trading-specific, so a new domain just supplies a `TradingEnvironment`-shaped class ([Extending it](#extending-it)). **Worked example — warehouse inventory control:** *State* `sₜ` = a 30-day window per SKU `[demand, on_hand_stock, in_transit, lead_time, unit_holding_cost, days_to_expiry, …]`, with the current stock position broadcast as extra channels (mirroring our `position`/`unrealized_pnl`). *Actions* = `{order 0, order Q_small, order Q_large}` — a discrete 3-action set the existing argmax head emits unchanged. *Reward* `rₜ = revenueₜ − holding_costₜ − stockout_penaltyₜ − order_costₜ`, the direct analogue of `ΔVₜ − Cₜ − Sₜ` (holding cost ≙ slippage, stockout penalty ≙ opportunity cost, order cost ≙ transaction cost). The agent learns a *replenishment policy* the same way it learns when a trade's edge beats its fees — a pure swap of the `Environment`.
 
 ## Research notebook & sensitivity analysis (§9)
 

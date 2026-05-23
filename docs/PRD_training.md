@@ -39,9 +39,13 @@ checkpointing.
 training RNG/weights) and, when the validation Sharpe improves on the running
 best, saves that checkpoint to `config.paths.checkpoint` with its
 `{episode, sharpe, return}` recorded as `metadata`. The chosen episode + metric
-are surfaced as `backtest_metrics.json → best_checkpoint`. This selects the
-model by held-out validation performance rather than by final-episode training
-score — the headline run picked episode 59, not 300.
+are surfaced as `backtest_metrics.json → best_checkpoint` (validation Sharpe
+peaked at episode 59). The headline **test** metrics report the final
+(episode-300) policy; the best-by-validation checkpoint is saved alongside it
+with its metadata for reload/inspection. (The early-stopped checkpoint does *not*
+improve the held-out test result — validation 2021 and test 2022 are different
+regimes — which is why the final-policy number stands as the honest headline;
+see the Conclusions' regime-shift point.)
 
 ## Key formulas (deck)
 - Bellman target: `y = r + γ · max_a' Q_target(s', a')·(1 − done)`

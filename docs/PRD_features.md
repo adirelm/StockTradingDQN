@@ -9,11 +9,15 @@ from, split chronologically with **no look-ahead / no test-set leakage**.
 
 ## Key design decision — 8 market features here, 2 portfolio features later
 The state has **10 channels** = **8 market features** (computable from OHLCV) +
-**2 portfolio features** (`position`, `unrealized_pnl`). This is a
-standard-quant feature set **inspired by** the deck's §4 list, **not a literal
-1:1 reproduction** of it — see the reconciliation table below for how each
-implemented channel relates to a §4 feature, and which §4 items we cover only
-by proxy. The portfolio features are path-dependent on the agent's own actions,
+**2 portfolio features** (`position`, `unrealized_pnl`). The **binding brief's §4
+names exactly these 8 market features** (`log_return`, `rsi_14`, `macd`,
+`macd_signal`, `macd_hist`, `bb_pct`, `vwap_dist`, `volume_norm`) plus the 2
+portfolio channels → the `(N, 30, 10)` tensor, so the implementation is a **1:1
+match to the brief**. (Separately, the lecture *deck* shows a different,
+*illustrative* 10-**concept** list — price return, normalised price, High-Low
+range, … — which our channels cover or proxy; that secondary reconciliation is
+the table further below, kept for completeness.) The portfolio features are
+path-dependent on the agent's own actions,
 so they are **injected by the `TradingEnvironment` at runtime (Phase 3)** —
 precomputing them would be both meaningless and a leak. Phase 2 therefore
 produces the **8 market columns** (config `features.names[:8]`):
@@ -21,7 +25,7 @@ produces the **8 market columns** (config `features.names[:8]`):
 | # | feature | formula (sketch) |
 |---|---|---|
 | 1 | log_return | `ln(Close).diff()` |
-| 2 | rsi_14 | Wilder RSI over `rsi_period` (raw 0–100; the normalizer scales it) |
+| 2 | rsi_14 | RSI over `rsi_period` (simple-average variant; raw 0–100, the normalizer scales it) |
 | 3 | macd | `EMA(macd_fast) − EMA(macd_slow)` of Close |
 | 4 | macd_signal | `EMA(macd_signal)` of the MACD line |
 | 5 | macd_hist | `macd − macd_signal` |
