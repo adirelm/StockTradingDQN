@@ -62,6 +62,17 @@ class TestPipeline:
         prepared.train(episodes=2, on_episode=lambda record: seen.append(record["episode"]))
         assert seen == [0, 1]  # SDK relays each episode to the GUI status bar
 
+    def test_train_rejects_zero_episodes(self, prepared):
+        with pytest.raises(ValueError, match="episodes must be"):  # else callers hit a bare IndexError
+            prepared.train(episodes=0)
+
+    def test_recommend_on_short_split_raises_clear_error(self, tmp_path):
+        client = DataClient(cache_dir=str(tmp_path / "c"), fetch_fn=lambda *a: synthetic_ohlcv(n=45))
+        sdk = TradingSDK(cfg=load_config(CONFIG), data_client=client)
+        sdk.prepare_data()  # ~26 feature rows → test split « window(30)
+        with pytest.raises(ValueError, match="to recommend"):  # clear error, not an opaque torch shape crash
+            sdk.recommend("test")
+
     def test_compare_trains_both_architectures(self, prepared):
         histories = prepared.compare(episodes=1)
         assert set(histories) == {"Dueling DQN", "Plain DQN"}

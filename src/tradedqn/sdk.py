@@ -72,6 +72,8 @@ class TradingSDK:
         """Train for ``episodes`` (config default); stream per-episode records to ``on_episode``."""
         self._require_data()
         episodes = episodes if episodes is not None else self.cfg.training.episodes
+        if int(episodes) < 1:
+            raise ValueError(f"episodes must be >= 1, got {episodes}")
         return TrainingService(self._env("train"), self.agent).train(episodes, on_episode=on_episode)
 
     def backtest(self, split: str = "test") -> dict:
@@ -107,6 +109,8 @@ class TradingSDK:
         self._require_data()
         features, _ = self._splits[split]
         window = self.cfg.features.window_size
+        if len(features) < window:  # recommend builds state directly, so guard here (env guards train/backtest)
+            raise ValueError(f"need ≥{window} rows to recommend; the {split!r} split has {len(features)}")
         market = features.to_numpy(dtype="float32")[-window:]
         return self.inference.recommend(assemble_state(market, position=0.0, unrealized_pnl=0.0))
 

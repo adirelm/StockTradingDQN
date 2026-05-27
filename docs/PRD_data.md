@@ -59,7 +59,7 @@ raw = client.get_ohlcv("AAPL", "2020-01-01", "2023-01-01")   # Open/High/Low/Clo
 print(len(raw), "rows"); print(raw.head())
 ```
 
-The underlying fetch (`client._yf_download`) is literally `yf.download(ticker, start=start,
+The default fetcher (`tradedqn.data.client._yf_download`, injected as `fetch_fn` and stored as `self._fetch_fn`) is literally `yf.download(ticker, start=start,
 end=end, interval=interval, progress=False)` with the single-ticker MultiIndex flattened —
 identical to the brief's snippet, but behind the class so it is cached, rate-limited, and
 testable (the fetcher is injectable, so tests never hit the network).

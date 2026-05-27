@@ -14,8 +14,9 @@ inference (latest window → recommended action).
 - `services/backtest.py` — `BacktestService(env, agent).run() -> dict`:
   greedy rollout, tracks equity + prices per step, counts trades and computes
   win-rate over completed round-trips, builds the Buy & Hold benchmark.
-- `services/inference.py` — `InferenceService(agent, names, feature_names).recommend(state)`
-  → `{action, action_index, q_values}` (greedy argmax of the policy Q-vector);
+- `services/inference.py` — `InferenceService(agent, names, feature_names).recommend(state, top_k=3)`
+  → `{action, action_index, q_values, names, confidence, top_features}` (greedy argmax + softmax
+  confidence + saliency-ranked drivers, §8 explainability);
   `action_names(cfg)` helper orders names by their config index.
 
 ## Small enabling changes

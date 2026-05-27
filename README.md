@@ -23,7 +23,7 @@ infinite and can't fit in a table.
 | Lint | `uv run ruff check src/ tests/ scripts/ main.py` |
 | Regenerate results | `uv run python scripts/generate_results.py` (charts → `results/`) |
 | Headline result | AAPL test, 300 ep: **−17.5%** vs Buy & Hold −16.5%, Sharpe −1.66 (honestly negative) |
-| Stack | PyTorch Dueling Conv1D DQN · Tkinter+matplotlib GUI · `uv` · 183 tests, 100% coverage |
+| Stack | PyTorch Dueling Conv1D DQN · Tkinter+matplotlib GUI · `uv` · 185 tests, 100% coverage |
 
 ## Objective
 
@@ -786,7 +786,7 @@ violations, ≤150 code lines/file, secret-scan, uv-only.
 
 ## Tests
 
-**183 tests · 100% statement + branch coverage** (the suite *fails* under 85%). Run:
+**185 tests · 100% statement + branch coverage** (the suite *fails* under 85%). Run:
 
 ```bash
 uv run pytest tests/ --cov=src/tradedqn --cov-report=term-missing
@@ -832,9 +832,9 @@ Latest run:
 ```text
 $ uv run pytest tests/ -q
 ...
-TOTAL                                     917      0    138      0   100%
+TOTAL                                     921      0    142      0   100%
 Required test coverage of 85% reached. Total coverage: 100.00%
-183 passed in 4.0s
+185 passed in 5.4s
 ```
 
 ## Project structure
