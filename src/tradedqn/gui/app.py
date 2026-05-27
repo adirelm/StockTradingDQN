@@ -76,10 +76,15 @@ class MainWindow:
         self._canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
     def _safe(self, action) -> None:
-        """Run ``action``; show any RuntimeError/ValueError in the status bar."""
+        """Run ``action``; surface any error in the status bar instead of crashing.
+
+        Catches TclError (non-numeric episodes Spinbox), OSError (missing checkpoint /
+        live-fetch failure) and the engine's RuntimeError/ValueError — the GUI must
+        never die on a bad click.
+        """
         try:
             action()
-        except (RuntimeError, ValueError) as error:
+        except (RuntimeError, ValueError, OSError, tk.TclError) as error:
             self.status.set(f"Error: {error}")
 
     def _prepare(self) -> None:

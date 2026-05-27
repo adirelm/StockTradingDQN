@@ -526,9 +526,12 @@ not hidden:
 
 What's already done about it, and what I'd still do:
 
-- **Select on validation, not training reward** *(done)* — training now **checkpoints
-  the best model by validation Sharpe** (`scripts/generate_results.py`, saved with
-  metadata), the proper early-stopping signal.
+- **Select on validation, not training reward** *(mechanism built; didn't help here)* —
+  training **checkpoints the best model by validation Sharpe** (`scripts/generate_results.py`,
+  saved with metadata). Important honesty point: the **headline reports the final-episode
+  policy**, and loading that best-by-validation checkpoint is actually *worse* on test
+  (≈ −23 % vs −17.5 %) because validation (2021) and test (2022) are different regimes — so
+  early-stopping is implemented but is not a working overfitting remedy on this slice.
 - **Test across more than one ticker** *(started)* — the [§4 cross-ticker NVDA
   experiment](#comparative-experiments-4-cross-ticker--6-double-dqn--7-reward-design--9-seed-robustness) shows the verdict
   flips per symbol; a full study still needs many tickers/regimes.
@@ -739,8 +742,10 @@ minimum, this project adds:
   (one-line target swap — an honest "didn't help, the binding issue is overfitting" result).
 - **Explainability** — every recommendation carries a **confidence** (softmax) and a
   **gradient-saliency feature attribution** ("which features drove this decision").
-- **Proper model selection** — **best-by-validation-Sharpe checkpointing** (early-stopping)
-  with run metadata, not just final-epoch weights.
+- **Best-by-validation checkpointing** — the early-stopping *mechanism* (save the
+  best model by validation Sharpe, with run metadata) is implemented; the headline
+  reports the final-epoch policy, and we honestly report that the checkpoint doesn't
+  beat it on the regime-shifted test slice.
 - **Research depth** — falsifiable hypotheses with verdicts, an OAT sensitivity sweep on
   validation, a feature-correlation heatmap, a **5-seed robustness study** (mean ± std, so
   the headline isn't read as a fluke), and an honest overfitting analysis (in-sample

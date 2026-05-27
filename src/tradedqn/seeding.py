@@ -4,10 +4,15 @@ The agent's ε-greedy and the replay buffer's sampling already draw from an
 injected, seeded NumPy ``Generator``; the network's *weight initialisation* draws
 from the global Torch RNG. Seeding Python / NumPy / Torch — **and pinning Torch to
 a single CPU thread + deterministic kernels** — makes a fresh training run
-reproducible bit-for-bit *across machines and environments*, not just within one
-process. (Multi-threaded CPU BLAS reductions accumulate floats in a
-thread-schedule-dependent order, so without single-threading the same seed yields
-slightly different weights run-to-run — enough to drift the backtest.)
+reproducible bit-for-bit on the **verified CPU setup** (Python 3.11–3.13, the
+pinned Torch in ``uv.lock``); a clean clone reproduces the headline exactly.
+(Multi-threaded CPU BLAS reductions accumulate floats in a thread-schedule-dependent
+order, so without single-threading the same seed yields slightly different weights
+run-to-run — enough to drift the backtest.) Caveats on *fully* general
+cross-machine determinism: ``use_deterministic_algorithms`` is ``warn_only`` (a
+missing deterministic kernel warns rather than raises), and ``PYTHONHASHSEED`` is a
+launch-time setting outside this function — neither affects the CPU MLP path here,
+but both bound the strength of an "any machine" claim.
 """
 
 from __future__ import annotations

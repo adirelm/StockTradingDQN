@@ -52,7 +52,7 @@ class TerminalApp:
                 continue
             try:
                 handler()
-            except (RuntimeError, ValueError) as error:
+            except (RuntimeError, ValueError, OSError) as error:  # OSError: e.g. Load before any Save
                 self._output(f"Error: {error}")
 
     def _print_menu(self) -> None:
