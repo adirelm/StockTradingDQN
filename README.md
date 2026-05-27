@@ -562,7 +562,9 @@ plainly is the point.
 
 Four controlled experiments — the two the brief mandates (§4 cross-ticker, §7 reward
 design) plus two excellence ablations (§6 Double-DQN target, §9 multi-seed robustness) —
-all **seeded + reproducible** off the committed cache:
+all **seeded + reproducible** off the committed cache. A consolidated
+**experiments summary** (hypothesis → result → verdict for all six studies) is in
+[`docs/EXPERIMENTS.md`](docs/EXPERIMENTS.md).
 
 ```bash
 uv run python scripts/compare_experiments.py --episodes 300   # → results/analysis/{cross_ticker,reward_comparison}.{json,png}

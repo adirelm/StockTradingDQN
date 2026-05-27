@@ -43,6 +43,27 @@ DataClient(cache_dir, gatekeeper=None, fetch_fn=_yf_download)
     .get_ohlcv(ticker, start, end, interval="1d", force_refresh=False) -> DataFrame
 ```
 
+### Reproduce the exact raw pull (§4)
+The `yf.download` call is **wrapped in the data class** (never pasted into training).
+To reproduce the binding AAPL 2020-2023 raw frame from scratch — the same cache-first /
+gatekept / CSV-fallback path the SDK uses:
+
+```python
+from tradedqn.data.client import DataClient
+from tradedqn.data.gatekeeper import RateLimitGatekeeper
+
+# cache-first: returns data/raw/AAPL_2020-01-01_2023-01-01.parquet if present,
+# else one gatekept yf.download(interval="1d"), else the {ticker}.csv fallback.
+client = DataClient("data/raw", RateLimitGatekeeper())
+raw = client.get_ohlcv("AAPL", "2020-01-01", "2023-01-01")   # Open/High/Low/Close/Volume
+print(len(raw), "rows"); print(raw.head())
+```
+
+The underlying fetch (`client._yf_download`) is literally `yf.download(ticker, start=start,
+end=end, interval=interval, progress=False)` with the single-ticker MultiIndex flattened —
+identical to the brief's snippet, but behind the class so it is cached, rate-limited, and
+testable (the fetcher is injectable, so tests never hit the network).
+
 ### Rate-limit config key mapping (§5.2)
 The guidelines' example names a single `requests_per_minute`-style throttle; our
 gatekeeper enforces **two** independent limits, so the `config.yaml`
