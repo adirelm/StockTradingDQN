@@ -146,10 +146,20 @@ class DQNAgent:
         )
 
     def load(self, path: str) -> None:
-        """Restore weights, ε/γ, and ``metadata`` from a checkpoint (``weights_only=True``)."""
-        checkpoint = torch.load(path, map_location=self.device, weights_only=True)
-        self.metadata = checkpoint.get("metadata", {})
-        self.policy.load_state_dict(checkpoint["policy"])
-        self.target.load_state_dict(checkpoint["target"])
-        self.epsilon = float(checkpoint["epsilon"])
-        self.gamma = float(checkpoint["gamma"])
+        """Restore weights, ε/γ, and ``metadata`` from a checkpoint (``weights_only=True``).
+
+        A corrupt, truncated, or wrong-schema file (e.g. an interrupted save or a
+        swapped file) raises a clear ``ValueError`` rather than an opaque torch/pickle
+        error, so the UIs (which catch ``ValueError``) surface it instead of crashing.
+        """
+        try:
+            checkpoint = torch.load(path, map_location=self.device, weights_only=True)
+            self.metadata = checkpoint.get("metadata", {})
+            self.policy.load_state_dict(checkpoint["policy"])
+            self.target.load_state_dict(checkpoint["target"])
+            self.epsilon = float(checkpoint["epsilon"])
+            self.gamma = float(checkpoint["gamma"])
+        except OSError:
+            raise  # missing/unreadable file — let the OSError speak (UIs catch it too)
+        except Exception as exc:  # corrupt / truncated / wrong-schema checkpoint
+            raise ValueError(f"not a valid TradeDQN checkpoint: {path!r} ({exc})") from exc

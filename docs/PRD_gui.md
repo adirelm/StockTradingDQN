@@ -1,7 +1,7 @@
 # PRD — Phase 9: GUI dashboard (Tkinter + matplotlib over the SDK)
 
 **Phase:** 9 of 10 · **Status:** approved-to-build (ADR: Tkinter+matplotlib) ·
-Covers `REQUIREMENTS.md` **B22** (and feeds the README block diagrams B24/B25).
+Covers requirement rows **B22** (and feeds the README block diagrams B24/B25).
 
 ## Goal
 A desktop dashboard over the **same SDK** the terminal uses: buttons for

@@ -40,7 +40,7 @@ Built with Claude Code over a **10-phase, PRD-first** workflow (see
 
 - **Token usage** is dominated by *context*, not the prompt you type: every
   turn re-sends the growing conversation + files in scope. Order-of-magnitude
-  for a project this size (10 phases, **~1,630 code lines of source + ~1,250 of
+  for a project this size (10 phases, **~1,640 code lines of source + ~1,270 of
   tests** — measured, non-blank/non-`#` lines per `scripts/check_file_sizes.sh`
   — plus docs, with re-reads and gate runs): **single-digit millions of tokens**,
   reduced substantially by prompt caching. Not instrumented precisely — stated

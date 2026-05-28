@@ -64,10 +64,15 @@ section and [`notebooks/analysis.ipynb`](../notebooks/analysis.ipynb).
   concrete evidence that the Sharpe-heavy reward is worth re-weighting (see Conclusions).
 
 ## 6 — §9 hyperparameter sweep (OAT, on validation)
-- **H:** the headline learning-rate/γ are reasonable choices on held-out *validation*.
+- **H:** are the configured (deck-default) `lr=0.001`, `γ=0.95` the validation-optimal choices?
 - **Setup:** one-at-a-time sweep; **validation** split only (no test peeking — §15 leakage guard).
-- **Result** (`sweep.json`): the configured `lr=0.001`, `γ=0.95` are at/near the validation optimum.
-- **Verdict:** **H supported** — hyperparameters chosen on validation, never on test.
+- **Result** (`sweep.json`): the configured values are **not** the validation argmax — on validation
+  Sharpe, `lr=0.005` (+0.05) edges `lr=0.001` (−0.10), and `γ=0.99` (+0.38) edges `γ=0.95` (−0.10).
+  But every validation Sharpe is near zero and noisy at this scale, so the "optimum" isn't robust.
+- **Verdict:** **H rejected (honestly).** We **kept the deck reference defaults** for fidelity to the
+  course's `DQN-Trader-SDK` rather than chasing a noisy validation argmax. The sweep is reported as-is
+  (it didn't favour our defaults), and crucially **selection happened on validation, never on test** —
+  which is the §15 point that actually matters.
 
 ---
 

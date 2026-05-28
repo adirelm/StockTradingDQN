@@ -25,7 +25,7 @@ We walk **every requirement, slowly, one at a time**. The guiding lesson:
 *missing* a requirement the rest of the class addressed costs more than any
 single quality slip. So:
 
-- Nothing is "done" until its row in `REQUIREMENTS.md` is checked **with
+- Nothing is "done" until its requirement row is checked **with
   evidence** (a file path, a test name, a screenshot).
 - Human decides scope / acceptance criteria / architecture; AI implements
   against an approved PRD. (Same §1.4 architect-vs-implementer contract as

@@ -1,6 +1,6 @@
 # PRD — Phase 4: Dueling Conv1D DQN (PyTorch)
 
-**Phase:** 4 of 10 · **Status:** approved-to-build · Covers `REQUIREMENTS.md`
+**Phase:** 4 of 10 · **Status:** approved-to-build · Covers requirement rows
 **B8** (network). Architecture is taken directly from the deck (low judgment).
 
 ## Goal

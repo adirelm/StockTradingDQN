@@ -2,7 +2,7 @@
 
 **Phase:** 1 of 10 · **Status:** approved-to-build · **Owner decisions:** human
 
-Covers `REQUIREMENTS.md` rows **B1, B2** and **C5** (config), and §5 of the
+Covers requirement rows **B1, B2** and **C5** (config), and §5 of the
 booklet. Lowest-judgment layer → built first to prove the TDD loop.
 
 ## Goal

@@ -1,6 +1,6 @@
 # PRD — Phase 3: TradingEnvironment (state, actions, reward)
 
-**Phase:** 3 of 10 · **Status:** approved-to-build · built & shipped (v1.0.0) · Covers `REQUIREMENTS.md`
+**Phase:** 3 of 10 · **Status:** approved-to-build · built & shipped (v1.0.0) · Covers requirement rows
 **B6, B7, B10, B18** (state) and feeds the agent (Phase 4).
 
 ## Goal

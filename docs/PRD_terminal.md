@@ -1,6 +1,6 @@
 # PRD — Phase 8: Terminal interface (menu over the SDK)
 
-**Phase:** 8 of 10 · **Status:** approved-to-build · Covers `REQUIREMENTS.md`
+**Phase:** 8 of 10 · **Status:** approved-to-build · Covers requirement rows
 **B21** (and B23 pipeline at the UI). The lecturer stressed building the
 terminal UI **first**: an AI agent can drive and self-test it without a mouse.
 

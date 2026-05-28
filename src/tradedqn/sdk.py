@@ -97,6 +97,8 @@ class TradingSDK:
         """
         self._require_data()
         episodes = episodes if episodes is not None else self.cfg.training.episodes
+        if int(episodes) < 1:  # mirror train(): else callers hit a bare IndexError on history[-1]
+            raise ValueError(f"episodes must be >= 1, got {episodes}")
         histories: dict[str, list] = {}
         for name, dueling in (("Dueling DQN", True), ("Plain DQN", False)):
             agent = DQNAgent(self._cfg_with_dueling(dueling))

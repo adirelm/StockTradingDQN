@@ -1,6 +1,6 @@
 # PRD — Phase 5: Training stack (replay + target net + DQN loop)
 
-**Phase:** 5 of 10 · **Status:** approved-to-build · Covers `REQUIREMENTS.md`
+**Phase:** 5 of 10 · **Status:** approved-to-build · Covers requirement rows
 **B9, B12, B13, B14, B15, B26**. This is where the agent actually learns.
 
 ## Goal
@@ -42,7 +42,7 @@ best, saves that checkpoint to `config.paths.checkpoint` with its
 are surfaced as `backtest_metrics.json → best_checkpoint` (validation Sharpe
 peaked at episode 59). The headline **test** metrics report the final
 (episode-300) policy; the best-by-validation checkpoint is saved alongside it
-with its metadata for reload/inspection. (The early-stopped checkpoint does *not*
+with its metadata for reload/inspection. (This best-by-validation checkpoint does *not*
 improve the held-out test result — validation 2021 and test 2022 are different
 regimes — which is why the final-policy number stands as the honest headline;
 see the Conclusions' regime-shift point.)

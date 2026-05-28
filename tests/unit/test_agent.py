@@ -134,3 +134,13 @@ class TestTargetAndCheckpoint:
         fresh = DQNAgent(tiny_cfg)
         fresh.load(path)
         assert fresh.metadata == {"episode": 42, "val_sharpe": 1.5}
+
+    def test_load_rejects_corrupt_checkpoint(self, dqn_agent, tmp_path):
+        bad = tmp_path / "junk.pt"
+        bad.write_text("not a checkpoint")  # corrupt file → clear ValueError, not an opaque torch crash
+        with pytest.raises(ValueError, match="not a valid TradeDQN checkpoint"):
+            dqn_agent.load(str(bad))
+
+    def test_load_missing_file_raises_oserror(self, dqn_agent, tmp_path):
+        with pytest.raises(OSError):  # missing file keeps its natural FileNotFoundError (UIs catch OSError)
+            dqn_agent.load(str(tmp_path / "nope.pt"))

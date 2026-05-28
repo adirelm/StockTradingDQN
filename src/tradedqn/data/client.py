@@ -85,7 +85,10 @@ class DataClient:
         missing = [column for column in OHLCV_COLUMNS if column not in frame.columns]
         if missing:
             raise ValueError(f"missing OHLCV columns: {missing}")
-        return frame[OHLCV_COLUMNS].dropna()
+        cleaned = frame[OHLCV_COLUMNS].dropna()  # check emptiness AFTER dropping NaNs, not before
+        if cleaned.empty:
+            raise ValueError("fetcher returned no usable rows after dropping NaNs")
+        return cleaned
 
     @staticmethod
     def _read_cache(path: Path) -> pd.DataFrame:

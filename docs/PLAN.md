@@ -57,6 +57,8 @@ diagram is the de-facto Component/code-structure view.
 ## Architecture Decision Records
 - **ADR-001** — config format: YAML over the deck's `setup.json` (inline-documented
   hyperparameters; deck parameter *names* kept). See [ADR-001-config-format.md](ADR-001-config-format.md).
+- **ADR-002** — absolute intra-package imports (`from tradedqn.…`) over relative, for
+  `src`-layout + installed-wheel parity. See [ADR-002-absolute-imports.md](ADR-002-absolute-imports.md).
 - **ADR (PRD_env D1)** — all-in/all-out position model (deck's "have stock or not").
 - **ADR (PRD_env D3)** — reward `r = ΔV − C − S + λ·Sharpe` (risk/cost-adjusted, not raw profit).
 - **ADR (PRD_gui)** — Tkinter + matplotlib GUI (stdlib + existing dep) over Streamlit.

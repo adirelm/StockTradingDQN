@@ -23,7 +23,7 @@ infinite and can't fit in a table.
 | Lint | `uv run ruff check src/ tests/ scripts/ main.py` |
 | Regenerate results | `uv run python scripts/generate_results.py` (charts → `results/`) |
 | Headline result | AAPL test, 300 ep: **−17.5%** vs Buy & Hold −16.5%, Sharpe −1.66 (honestly negative) |
-| Stack | PyTorch Dueling Conv1D DQN · Tkinter+matplotlib GUI · `uv` · 185 tests, 100% coverage |
+| Stack | PyTorch Dueling Conv1D DQN · Tkinter+matplotlib GUI · `uv` · 189 tests, 100% coverage |
 
 ## Objective
 
@@ -418,9 +418,11 @@ The other GUI states, same window (all real captures via `scripts/capture_gui.py
 ![Compare arch — Dueling vs plain DQN reward](docs/assets/gui_compare.png)
 
 > A genuine capture, not a mockup — regenerate any time with
-> `uv run python scripts/capture_gui.py`. The numbers come from a short demo
-> train; over so few episodes the outcome swings either side of Buy & Hold
-> run-to-run (the honest small-sample story in **Results**). The episode count
+> `uv run python scripts/capture_gui.py` (seeded, so it reproduces). The numbers
+> come from a short demo train; over so few episodes the outcome lands either side
+> of Buy & Hold depending on the seed/episode count (the honest small-sample story
+> in **Results**) — a *given* seed is deterministic, but few-episode runs are
+> high-variance across seeds. The episode count
 > defaults from `config.yaml` (`gui.default_train_episodes`); the dueling head is
 > toggled by `network.dueling`.
 >
@@ -708,7 +710,7 @@ The twelve questions the brief requires the README to answer, with pointers to t
 6. **When is Hold optimal?** Hold is optimal exactly when `Q(s,Hold)` is the argmax — i.e. when no trade has positive expected *net* value: the expected price move doesn't cover cost + slippage, or the position is already aligned with the move so trading would only burn fees. Because the state carries the agent's own `position`/`unrealized_pnl` channels ([trading_env.py](src/tradedqn/env/trading_env.py)), Hold is context-dependent — the same market window can favour Hold when already long and Buy when flat. It is the no-op that preserves capital while the cost-aware reward (Q4) makes marginal trades negative-EV.
 7. **How does Dueling help when mostly no action is needed?** The value head `V(s)` learns "how good is this state" *independent of action*; the advantage head learns the small per-action deltas. In a hold-dominated environment the shared `V(s)` is learned efficiently without sampling every `(s,a)` ([network.py](src/tradedqn/model/network.py)).
 8. **Exploration (training) vs evaluation (backtest)?** Training is ε-greedy (random with prob ε to explore); the backtest is **greedy** (`argmax Q`, ε=0) — we evaluate the learned policy, not exploration noise ([agent.py](src/tradedqn/model/agent.py), [backtest.py](src/tradedqn/services/backtest.py)).
-9. **Is Total Return enough?** No — a high return can hide huge risk. We also report **Sharpe** (risk-adjusted), **Max Drawdown** (worst pain), and **Win Rate** (consistency) so a lucky high-variance run can't pass as skill ([metrics.py](src/tradedqn/services/metrics.py)).
+9. **Is Total Return enough?** No — a high return can hide huge risk. We also report **Sharpe** (risk-adjusted), **Max Drawdown** (worst pain), and **Win Rate** (consistency) so a lucky high-variance run can't pass as skill ([metrics.py](src/tradedqn/services/metrics.py) for return/Sharpe/drawdown; [backtest.py](src/tradedqn/services/backtest.py) for win-rate + trade count).
 10. **Which env/reward bugs fake a good backtest?** Look-ahead (using `price[t+1]` in the state), normalization fit on the full series, an off-by-one reward (crediting a trade before it executes), or zero transaction cost — all inflate results. Our env executes at `prices[t]` with the next day only as *outcome*, and a test asserts no look-ahead ([trading_env.py](src/tradedqn/env/trading_env.py)).
 11. **General policy vs an AAPL quirk?** The [§4 cross-ticker test](#comparative-experiments-4-cross-ticker--6-double-dqn--7-reward-design--9-seed-robustness) answers this directly: the **same method loses on AAPL (−17.5% vs −16.5%) but beats Buy & Hold on NVDA (+26.6% vs +7.1%)**. Opposite verdicts on two symbols is itself the evidence — there's no *consistent* edge, just regime-dependent behaviour. Establishing generality would need consistent held-out Sharpe across **many tickers and regimes**, not one lucky symbol.
 12. **Extend to another (financial or non-financial) problem, same RL structure?** The agent/training/backtest/SDK layers touch the env only through `reset()` and `step(action) → (state, reward, done, info)` and a `(window × features) → n_actions` Q-net — nothing in them is trading-specific, so a new domain just supplies a `TradingEnvironment`-shaped class ([Extending it](#extending-it)). **Worked example — warehouse inventory control:** *State* `sₜ` = a 30-day window per SKU `[demand, on_hand_stock, in_transit, lead_time, unit_holding_cost, days_to_expiry, …]`, with the current stock position broadcast as extra channels (mirroring our `position`/`unrealized_pnl`). *Actions* = `{order 0, order Q_small, order Q_large}` — a discrete 3-action set the existing argmax head emits unchanged. *Reward* `rₜ = revenueₜ − holding_costₜ − stockout_penaltyₜ − order_costₜ`, the direct analogue of `ΔVₜ − Cₜ − Sₜ` (holding cost ≙ slippage, stockout penalty ≙ opportunity cost, order cost ≙ transaction cost). The agent learns a *replenishment policy* the same way it learns when a trade's edge beats its fees — a pure swap of the `Environment`.
@@ -786,7 +788,7 @@ violations, ≤150 code lines/file, secret-scan, uv-only.
 
 ## Tests
 
-**185 tests · 100% statement + branch coverage** (the suite *fails* under 85%). Run:
+**189 tests · 100% statement + branch coverage** (the suite *fails* under 85%). Run:
 
 ```bash
 uv run pytest tests/ --cov=src/tradedqn --cov-report=term-missing
@@ -832,9 +834,9 @@ Latest run:
 ```text
 $ uv run pytest tests/ -q
 ...
-TOTAL                                     921      0    142      0   100%
+TOTAL                                     931      0    146      0   100%
 Required test coverage of 85% reached. Total coverage: 100.00%
-185 passed in 5.4s
+189 passed in 4.4s
 ```
 
 ## Project structure

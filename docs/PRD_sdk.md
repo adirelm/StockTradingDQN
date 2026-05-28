@@ -1,6 +1,6 @@
 # PRD — Phase 7: TradingSDK (the single facade)
 
-**Phase:** 7 of 10 · **Status:** approved-to-build · Covers `REQUIREMENTS.md`
+**Phase:** 7 of 10 · **Status:** approved-to-build · Covers requirement rows
 **B16, B20, B23** and **C4** (§4 SDK mandate). The architectural keystone.
 
 ## Goal

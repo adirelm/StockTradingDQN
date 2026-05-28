@@ -1,6 +1,6 @@
 # PRD — Phase 6: Backtest + Inference
 
-**Phase:** 6 of 10 · **Status:** approved-to-build · Covers `REQUIREMENTS.md`
+**Phase:** 6 of 10 · **Status:** approved-to-build · Covers requirement rows
 **B16, B17, B18**. This is the "prove it works" evidence the lecturer stresses.
 
 ## Goal

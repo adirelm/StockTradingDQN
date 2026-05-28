@@ -1,6 +1,6 @@
 # PRD — Phase 2: Feature Engineering (indicators + normalization + split)
 
-**Phase:** 2 of 10 · **Status:** approved-to-build · Covers `REQUIREMENTS.md`
+**Phase:** 2 of 10 · **Status:** approved-to-build · Covers requirement rows
 **B3, B4, B5** (and feeds B6 windowing in Phase 3).
 
 ## Goal

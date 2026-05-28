@@ -66,6 +66,10 @@ class TestPipeline:
         with pytest.raises(ValueError, match="episodes must be"):  # else callers hit a bare IndexError
             prepared.train(episodes=0)
 
+    def test_compare_rejects_zero_episodes(self, prepared):
+        with pytest.raises(ValueError, match="episodes must be"):  # mirror train(); compare's history[-1] guard
+            prepared.compare(episodes=0)
+
     def test_recommend_on_short_split_raises_clear_error(self, tmp_path):
         client = DataClient(cache_dir=str(tmp_path / "c"), fetch_fn=lambda *a: synthetic_ohlcv(n=45))
         sdk = TradingSDK(cfg=load_config(CONFIG), data_client=client)

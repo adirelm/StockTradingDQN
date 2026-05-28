@@ -74,6 +74,15 @@ class TestValidation:
         with pytest.raises(ValueError, match="missing OHLCV columns"):
             client.get_ohlcv("X", "2020-01-01", "2020-01-02")
 
+    def test_all_nan_rows_rejected(self, tmp_path):
+        nan_frame = make_frame()
+        nan_frame["Volume"] = float("nan")  # every row now NaN in an OHLCV col → dropna() empties it
+        client = DataClient(cache_dir=str(tmp_path), gatekeeper=SpyGatekeeper(),
+                            fetch_fn=lambda *a: nan_frame)
+        with pytest.raises(ValueError, match="no usable rows"):  # caught BEFORE caching an empty frame
+            client.get_ohlcv("X", "2020-01-01", "2020-01-02")
+        assert not list(tmp_path.glob("*.parquet"))  # nothing cached
+
     def test_path_traversal_ticker_rejected(self, tmp_path):
         client = DataClient(cache_dir=str(tmp_path), gatekeeper=SpyGatekeeper())
         with pytest.raises(ValueError, match="invalid ticker"):  # §13: crafted symbol can't escape cache_dir
